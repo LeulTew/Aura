@@ -312,3 +312,114 @@ async def get_image(
         # Fallback to original file if resizing fails
         return FileResponse(path)
 
+# Admin & QR Endpoints
+
+class LoginRequest(BaseModel):
+    pin: str
+
+class LoginResponse(BaseModel):
+    success: bool
+    token: Optional[str] = None
+    error: Optional[str] = None
+
+class FolderItem(BaseModel):
+    name: str
+    path: str
+    type: str  # "dir" or "file"
+    count: Optional[int] = None # For dirs, number of image files
+
+class FolderResponse(BaseModel):
+    path: str
+    parent: Optional[str]
+    items: List[FolderItem]
+
+class BundleRequest(BaseModel):
+    name: str
+    photo_ids: List[str]
+
+class BundleResponse(BaseModel):
+    id: str
+    url: str
+
+ADMIN_PIN = "1234" # TODO: Move to env var
+JWT_SECRET = "aura_secret_key" # Keep simple for MVP
+BUNDLE_FILE = "data/bundles.json"
+
+@app.post("/api/admin/login", response_model=LoginResponse)
+async def admin_login(req: LoginRequest):
+    if req.pin == ADMIN_PIN:
+        import jwt
+        from datetime import datetime, timedelta
+        token = jwt.encode({
+            "role": "admin",
+            "exp": datetime.utcnow() + timedelta(days=1)
+        }, JWT_SECRET, algorithm="HS256")
+        return LoginResponse(success=True, token=token)
+    return LoginResponse(success=False, error="Invalid PIN")
+
+@app.get("/api/admin/folders", response_model=FolderResponse)
+async def list_folders(path: str = Query(default="/")):
+    if not os.path.exists(path) or not os.path.isdir(path):
+        raise HTTPException(status_code=404, detail="Path not found")
+    
+    items = []
+    try:
+        valid_exts = {".jpg", ".jpeg", ".png", ".webp"}
+        with os.scandir(path) as it:
+            for entry in it:
+                if entry.name.startswith("."): continue
+                
+                if entry.is_dir():
+                    # Count images in subdir (shallow)
+                    items.append(FolderItem(name=entry.name, path=entry.path, type="dir"))
+                elif entry.is_file() and os.path.splitext(entry.name)[1].lower() in valid_exts:
+                    items.append(FolderItem(name=entry.name, path=entry.path, type="file"))
+        
+        # Sort: Dirs first, then files
+        items.sort(key=lambda x: (x.type != "dir", x.name.lower()))
+        
+        parent = os.path.dirname(path) if path != "/" else None
+        return FolderResponse(path=path, parent=parent, items=items)
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+@app.post("/api/bundles", response_model=BundleResponse)
+async def create_bundle(req: BundleRequest):
+    import json
+    import uuid
+    
+    bundle_id = str(uuid.uuid4())[:8]
+    bundle_data = {
+        "id": bundle_id,
+        "name": req.name,
+        "photo_ids": req.photo_ids,
+        "created_at": str(datetime.now())
+    }
+    
+    # Load existing bundles
+    os.makedirs(os.path.dirname(BUNDLE_FILE), exist_ok=True)
+    bundles = {}
+    if os.path.exists(BUNDLE_FILE):
+        try:
+            with open(BUNDLE_FILE, "r") as f:
+                bundles = json.load(f)
+        except: pass
+    
+    bundles[bundle_id] = bundle_data
+    
+    with open(BUNDLE_FILE, "w") as f:
+        json.dump(bundles, f, indent=2)
+        
+    return BundleResponse(id=bundle_id, url=f"/gallery/{bundle_id}")
+
+@app.get("/api/qr")
+async def generate_qr(url: str):
+    import qrcode
+    from io import BytesIO
+    from fastapi.responses import Response
+    
+    img = qrcode.make(url)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return Response(content=buf.getvalue(), media_type="image/png")
