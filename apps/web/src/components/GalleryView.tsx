@@ -202,9 +202,23 @@ export default function GalleryView({ matches, onBack, isBundle = false }: Galle
     }
   };
 
-  // Download state
+  // Download state & Helpers
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const resetDownloadState = useCallback(() => {
+    setDownloadProgress(null);
+    abortControllerRef.current = null;
+    setSelectMode(false);
+    setSelected(new Set());
+  }, []);
+
+  const cancelDownload = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    resetDownloadState();
+  }, [resetDownloadState]);
 
   const downloadAll = async () => {
     const toDownload = selectMode && selected.size > 0 
@@ -223,7 +237,6 @@ export default function GalleryView({ matches, onBack, isBundle = false }: Galle
     const signal = abortControllerRef.current.signal;
 
     try {
-    try {
       // 1. Fetch all blobs concurrently (Faster, preserves User Gesture for iOS Share)
       const fetchPromises = toDownload.map(async (match, idx) => {
         if (signal.aborted) throw new Error("Download cancelled");
@@ -231,7 +244,6 @@ export default function GalleryView({ matches, onBack, isBundle = false }: Galle
         let attempts = 0;
         while (attempts < 3) {
            try {
-             // Update progress roughly
              const response = await fetch(getImageUrl(match.source_path), { signal });
              if (!response.ok) throw new Error(`HTTP ${response.status}`);
              const blob = await response.blob();
@@ -248,7 +260,7 @@ export default function GalleryView({ matches, onBack, isBundle = false }: Galle
 
       // Wait for all
       const results = await Promise.all(fetchPromises);
-      setDownloadProgress({ current: results.length, total: results.length }); // Done fetching
+      setDownloadProgress({ current: results.length, total: results.length }); 
       
       // Convert to Files
       const files = results.map(({ blob, match }) => {
@@ -257,7 +269,7 @@ export default function GalleryView({ matches, onBack, isBundle = false }: Galle
       });
 
       // 2. Try Native Share (Mobile)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files })) {
         try {
           await navigator.share({
             files: files,
@@ -303,20 +315,6 @@ export default function GalleryView({ matches, onBack, isBundle = false }: Galle
       }
       resetDownloadState();
     }
-  };
-
-  const cancelDownload = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    resetDownloadState();
-  };
-
-  const resetDownloadState = () => {
-    setDownloadProgress(null);
-    abortControllerRef.current = null;
-    setSelectMode(false);
-    setSelected(new Set());
   };
 
   const getTransitionStyle = (): React.CSSProperties => {
