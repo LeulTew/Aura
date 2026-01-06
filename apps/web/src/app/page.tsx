@@ -97,11 +97,12 @@ export default function Home() {
     }
   };
 
-  // Loading state
+  // Loading state (Hydration/Restoration)
   if (!isHydrated) {
     return (
-      <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black">
-        <VoidBackground />
+      <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[var(--bg)] text-white">
+        <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="font-mono text-xs text-gray-400 tracking-widest uppercase">Restoring Aura...</p>
       </main>
     );
   }

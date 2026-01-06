@@ -183,7 +183,38 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     const toDownload = selectMode && selected.size > 0 
       ? matches.filter(m => selected.has(m.id))
       : matches;
-    for (const match of toDownload) await downloadImage(match);
+
+    // Single file - direct download
+    if (toDownload.length === 1) {
+      await downloadImage(toDownload[0]);
+      return;
+    }
+
+    // Multiple files - ZIP
+    try {
+      const JSZip = (await import("jszip")).default;
+      const { saveAs } = (await import("file-saver"));
+      const zip = new JSZip();
+      
+      // Add files to zip
+      await Promise.all(toDownload.map(async (match) => {
+        const response = await fetch(getImageUrl(match.source_path));
+        const blob = await response.blob();
+        const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
+        zip.file(filename, blob);
+      }));
+
+      // Generate and save
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, `aura-photos-${new Date().toISOString().split('T')[0]}.zip`);
+      
+      // Exit select mode after download
+      setSelectMode(false);
+      setSelected(new Set());
+    } catch (err) {
+      console.error("Zip download failed:", err);
+      alert("Failed to create zip file");
+    }
   };
 
   const getTransitionStyle = (): React.CSSProperties => {
