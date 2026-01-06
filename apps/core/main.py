@@ -195,7 +195,7 @@ async def scan_directory(
 async def search_faces(
     file: UploadFile = File(...),
     limit: int = Query(default=100, ge=1, le=500, description="Max results to return"),
-    max_distance: float = Query(default=1500.0, ge=0, description="Maximum distance threshold for matches")
+    max_distance: float = Query(default=1250.0, ge=0, description="Maximum distance threshold for matches")
 ):
     """
     Upload a selfie to find matching faces in the database.
