@@ -134,14 +134,34 @@ export default function AdminPage() {
             </button>
             <form 
               className="flex-1"
+            <form 
+              className="flex-1"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!pathInput.trim()) {
-                  setPathInput("/");
-                  setCurrentPath("/");
-                } else {
-                  setCurrentPath(pathInput);
+                let cleanPath = pathInput.trim();
+                
+                // Smart Path Correction for Windows users
+                
+                // 1. Convert backslashes to forward slashes
+                cleanPath = cleanPath.replace(/\\/g, "/");
+                
+                // 2. Handle WSL Network paths (e.g. //wsl.localhost/Ubuntu-24.04/home -> /home)
+                if (cleanPath.startsWith("//wsl.localhost/") || cleanPath.startsWith("//wsl$/")) {
+                  const match = cleanPath.match(/^\/\/[^\/]+\/[^\/]+(.*)/);
+                  if (match) cleanPath = match[1] || "/";
                 }
+                
+                // 3. Handle Windows Drive letters (e.g. C:/Users -> /mnt/c/Users)
+                const driveMatch = cleanPath.match(/^([a-zA-Z]):/);
+                if (driveMatch) {
+                   const drive = driveMatch[1].toLowerCase();
+                   cleanPath = `/mnt/${drive}` + cleanPath.substring(2);
+                }
+
+                if (!cleanPath) cleanPath = "/";
+                
+                setPathInput(cleanPath);
+                setCurrentPath(cleanPath);
               }}
             >
                <input 
