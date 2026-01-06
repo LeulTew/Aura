@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 
 interface SearchMatch {
   id: string;
@@ -82,6 +80,22 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectDate = (groupMatches: SearchMatch[]) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      const allSelected = groupMatches.every(m => next.has(m.id));
+      
+      if (allSelected) {
+        // Deselect all
+        groupMatches.forEach(m => next.delete(m.id));
+      } else {
+        // Select all
+        groupMatches.forEach(m => next.add(m.id));
+      }
       return next;
     });
   };
@@ -383,6 +397,21 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
             {/* Date Separator */}
             <div className="flex items-center gap-4 mb-4 px-2">
               <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              
+              {/* Select Date Button */}
+              {selectMode && (
+                <button
+                  onClick={() => toggleSelectDate(group.matches)}
+                  className={`font-mono text-[10px] px-2 py-0.5 rounded border transition-all ${
+                    group.matches.every(m => selected.has(m.id)) 
+                      ? 'bg-[var(--accent)] border-[var(--accent)] text-black' 
+                      : 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black'
+                  }`}
+                >
+                  {group.matches.every(m => selected.has(m.id)) ? 'DESELECT' : 'SELECT'} DATE
+                </button>
+              )}
+              
               <span className="font-mono text-xs text-[var(--accent)] uppercase tracking-wider whitespace-nowrap">
                 {group.dateLabel}
               </span>
