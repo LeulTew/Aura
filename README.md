@@ -6,9 +6,10 @@
 
 - 📸 **Face Scanning** — Take a selfie to find all photos of yourself
 - 🧠 **AI-Powered** — GhostFaceNet embeddings with LanceDB vector search
-- ⚡ **Instant Results** — Sub-second similarity matching
-- 🎨 **Premium UI** — Dark mode with holographic scanner effects
-- 📱 **Mobile-First** — Responsive masonry gallery with smooth animations
+- ⚡ **Instant Results** — Sub-second matching with thumbnail pre-loading
+- 📅 **Smart Organization** — Auto-groups photos by date (EXIF/Time)
+- 🎨 **Premium UI** — Dark mode, glassmorphism, and smooth shared-element transitions
+- 📱 **Mobile-First** — Flip camera support, native share/save to camera roll
 
 ## Tech Stack
 
