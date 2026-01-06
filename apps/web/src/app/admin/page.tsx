@@ -128,9 +128,13 @@ export default function AdminPage() {
         
         {/* Left: File Browser */}
         <div className="lg:col-span-2 bg-[#111] rounded-xl border border-white/10 overflow-hidden flex flex-col">
+          <div className="p-4 bg-white/5 border-b border-white/10 flex justify-between items-center">
+             <span className="text-xs font-mono uppercase text-gray-400">Server File System</span>
+          </div>
+
           <div className="p-4 bg-white/5 border-b border-white/10 flex gap-2 items-center font-mono text-xs">
             <button onClick={() => setCurrentPath(folderData?.parent || "/")} disabled={!folderData?.parent} className="hover:text-[var(--accent)] disabled:opacity-30 px-2 py-1">
-              ⬆ UP
+              ⬆ UP LEVEL
             </button>
             <form 
               className="flex-1"
@@ -211,56 +215,77 @@ export default function AdminPage() {
         </div>
 
         {/* Right: Bundle Creator */}
-        <div className="bg-[#111] rounded-xl border border-white/10 p-6 flex flex-col">
-          <h2 className="text-lg font-light uppercase tracking-wide mb-6 border-b border-white/10 pb-2">Bundle Creator</h2>
+        <div className="flex flex-col gap-8">
           
-          <div className="flex-1">
-            <div className="mb-6">
-              <label className="block text-xs font-mono text-gray-400 mb-2 uppercase">Selected Photos</label>
-              <div className="text-3xl font-bold text-[var(--accent)]">
-                {selectedPhotos.size}
-              </div>
+          {/* Public Access QR */}
+          <div className="bg-[#111] rounded-xl border border-white/10 p-6">
+            <h2 className="text-lg font-light uppercase tracking-wide mb-4 border-b border-white/10 pb-2">Public Access</h2>
+            <div className="flex gap-4 items-center">
+               <div className="bg-white p-2 rounded">
+                 <img 
+                   src={`/api/qr?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : "")}`}
+                   alt="Public QR"
+                   className="w-24 h-24"
+                 />
+               </div>
+               <div>
+                 <p className="text-xs font-mono text-gray-400 mb-2 uppercase">Scan to open Gallery</p>
+                 <a href="/" target="_blank" className="text-[var(--accent)] text-xs font-mono hover:underline">Open Public Page ↗</a>
+               </div>
             </div>
-
-            <div className="mb-8">
-              <label className="block text-xs font-mono text-gray-400 mb-2 uppercase">Bundle Name</label>
-              <input 
-                type="text" 
-                value={bundleName}
-                onChange={(e) => setBundleName(e.target.value)}
-                placeholder="e.g. Vacation 2024"
-                className="w-full bg-black/50 border border-white/20 rounded px-4 py-2 text-sm focus:border-[var(--accent)] outline-none text-white"
-              />
-            </div>
-
-            <button
-              onClick={createBundle}
-              disabled={selectedPhotos.size === 0 || !bundleName}
-              className="w-full py-3 bg-[var(--accent)] text-black font-bold uppercase tracking-wider rounded disabled:opacity-50 hover:opacity-90 transition-opacity"
-            >
-              Generate Bundle
-            </button>
           </div>
 
-          {/* Result / QR */}
-          {createdBundle && (
-            <div className="mt-8 pt-8 border-t border-white/10 text-center animate-fade-in">
-              <p className="text-xs font-mono text-green-400 mb-4 uppercase">Bundle Created Successfully!</p>
-              
-              <div className="bg-white p-4 rounded-lg inline-block mb-4">
-                 {/* QR Code calling backend */}
-                 <img 
-                   src={`/api/qr?url=${encodeURIComponent(window.location.origin + createdBundle.url)}`}
-                   alt="QR Code"
-                   className="w-48 h-48"
-                 />
+          <div className="bg-[#111] rounded-xl border border-white/10 p-6 flex flex-col flex-1">
+            <h2 className="text-lg font-light uppercase tracking-wide mb-6 border-b border-white/10 pb-2">Create Bundle</h2>
+            
+            <div className="flex-1">
+              <div className="mb-6">
+                <label className="block text-xs font-mono text-gray-400 mb-2 uppercase">Selected Photos</label>
+                <div className="text-3xl font-bold text-[var(--accent)]">
+                  {selectedPhotos.size}
+                </div>
               </div>
-              
-              <p className="font-mono text-[10px] text-gray-500 break-all select-all">
-                {window.location.origin + createdBundle.url}
-              </p>
+
+              <div className="mb-8">
+                <label className="block text-xs font-mono text-gray-400 mb-2 uppercase">Bundle Name</label>
+                <input 
+                  type="text" 
+                  value={bundleName}
+                  onChange={(e) => setBundleName(e.target.value)}
+                  placeholder="e.g. Wedding Photos"
+                  className="w-full bg-black/50 border border-white/20 rounded px-4 py-2 text-sm focus:border-[var(--accent)] outline-none text-white"
+                />
+              </div>
+
+              <button
+                onClick={createBundle}
+                disabled={selectedPhotos.size === 0 || !bundleName}
+                className="w-full py-3 bg-[var(--accent)] text-black font-bold uppercase tracking-wider rounded disabled:opacity-50 hover:opacity-90 transition-opacity"
+              >
+                Generate Bundle QR
+              </button>
             </div>
-          )}
+
+            {/* Result / QR */}
+            {createdBundle && (
+              <div className="mt-8 pt-8 border-t border-white/10 text-center animate-fade-in">
+                <p className="text-xs font-mono text-green-400 mb-4 uppercase">Bundle Ready</p>
+                
+                <div className="bg-white p-4 rounded-lg inline-block mb-4">
+                   {/* QR Code calling backend */}
+                   <img 
+                     src={`/api/qr?url=${encodeURIComponent(window.location.origin + createdBundle.url)}`}
+                     alt="Bundle QR"
+                     className="w-48 h-48"
+                   />
+                </div>
+                
+                <p className="font-mono text-[10px] text-gray-500 break-all select-all">
+                  {window.location.origin + createdBundle.url}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
       </div>

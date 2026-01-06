@@ -387,30 +387,36 @@ async def list_folders(path: str = Query(default="/")):
 async def create_bundle(req: BundleRequest):
     import json
     import uuid
+    from datetime import datetime
     
-    bundle_id = str(uuid.uuid4())[:8]
-    bundle_data = {
-        "id": bundle_id,
-        "name": req.name,
-        "photo_ids": req.photo_ids,
-        "created_at": str(datetime.now())
-    }
-    
-    # Load existing bundles
-    os.makedirs(os.path.dirname(BUNDLE_FILE), exist_ok=True)
-    bundles = {}
-    if os.path.exists(BUNDLE_FILE):
-        try:
-            with open(BUNDLE_FILE, "r") as f:
-                bundles = json.load(f)
-        except: pass
-    
-    bundles[bundle_id] = bundle_data
-    
-    with open(BUNDLE_FILE, "w") as f:
-        json.dump(bundles, f, indent=2)
+    try:
+        bundle_id = str(uuid.uuid4())[:8]
+        bundle_data = {
+            "id": bundle_id,
+            "name": req.name,
+            "photo_ids": req.photo_ids,
+            "created_at": str(datetime.now())
+        }
         
-    return BundleResponse(id=bundle_id, url=f"/gallery/{bundle_id}")
+        # Load existing bundles
+        os.makedirs(os.path.dirname(BUNDLE_FILE), exist_ok=True)
+        bundles = {}
+        if os.path.exists(BUNDLE_FILE):
+            try:
+                with open(BUNDLE_FILE, "r") as f:
+                    bundles = json.load(f)
+            except: pass
+        
+        bundles[bundle_id] = bundle_data
+        
+        with open(BUNDLE_FILE, "w") as f:
+            json.dump(bundles, f, indent=2)
+            
+        return BundleResponse(id=bundle_id, url=f"/gallery/{bundle_id}")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/qr")
 async def generate_qr(url: str):
