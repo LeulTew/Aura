@@ -13,6 +13,7 @@ interface SearchMatch {
   id: string;
   source_path: string;
   distance: number;
+  photo_date: string;
   created_at: string;
 }
 

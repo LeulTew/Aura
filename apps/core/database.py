@@ -20,6 +20,7 @@ class FaceRecord(LanceModel):
     vector: Vector(512)  # GhostFaceNet produces 512D embeddings
     image_blob: bytes  # Face crop stored as JPEG bytes
     source_path: str  # Original image file path
+    photo_date: str  # Date photo was taken (from EXIF or file mtime)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -67,6 +68,7 @@ def add_faces(records: List[Dict[str, Any]]) -> int:
             "vector": rec["vector"],
             "image_blob": rec["image_blob"],
             "source_path": rec["source_path"],
+            "photo_date": rec.get("photo_date", datetime.now().isoformat().split("T")[0]),
             "created_at": datetime.now().isoformat()
         })
     
@@ -102,6 +104,7 @@ def search_similar(
             "id": row["id"],
             "source_path": row["source_path"],
             "distance": row["_distance"],
+            "photo_date": row.get("photo_date", row["created_at"].split("T")[0]),
             "created_at": row["created_at"]
         }
         if include_blob:

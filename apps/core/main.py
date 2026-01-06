@@ -69,6 +69,7 @@ class SearchMatch(BaseModel):
     id: str
     source_path: str
     distance: float
+    photo_date: str
     created_at: str
 
 class SearchResponse(BaseModel):
@@ -169,7 +170,8 @@ async def scan_directory(
                 db_records.append({
                     "vector": r["embedding"],
                     "image_blob": image_bytes,
-                    "source_path": r["path"]
+                    "source_path": r["path"],
+                    "photo_date": r.get("photo_date")
                 })
             
             stored_count = add_faces(db_records)
@@ -193,7 +195,7 @@ async def scan_directory(
 async def search_faces(
     file: UploadFile = File(...),
     limit: int = Query(default=100, ge=1, le=500, description="Max results to return"),
-    max_distance: float = Query(default=9999.0, ge=0, description="Maximum distance threshold for matches")
+    max_distance: float = Query(default=600.0, ge=0, description="Maximum distance threshold for matches")
 ):
     """
     Upload a selfie to find matching faces in the database.
@@ -242,12 +244,18 @@ async def search_faces(
             os.remove(tmp_path)
 
 @app.get("/api/image")
-async def get_image(path: str = Query(..., description="Full path to image file")):
+async def get_image(
+    path: str = Query(..., description="Full path to image file"),
+    w: Optional[int] = Query(None, description="Target width for resizing"),
+    h: Optional[int] = Query(None, description="Target height for resizing")
+):
     """
     Serve an image file from the filesystem.
-    Used by the gallery to display matched photos.
+    Supports on-the-fly resizing for thumbnails.
     """
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, Response
+    from PIL import Image
+    import io
     
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Image not found")
@@ -255,16 +263,52 @@ async def get_image(path: str = Query(..., description="Full path to image file"
     if not os.path.isfile(path):
         raise HTTPException(status_code=400, detail="Path is not a file")
     
-    # Determine content type
-    ext = os.path.splitext(path)[1].lower()
-    content_types = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".gif": "image/gif"
-    }
-    content_type = content_types.get(ext, "application/octet-stream")
+    # If no resizing needed, return file directly
+    if not w and not h:
+        ext = os.path.splitext(path)[1].lower()
+        content_types = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+            ".gif": "image/gif"
+        }
+        content_type = content_types.get(ext, "application/octet-stream")
+        return FileResponse(path, media_type=content_type)
     
-    return FileResponse(path, media_type=content_type)
+    # Resize logic
+    try:
+        with Image.open(path) as img:
+            # Convert to RGB if RGBA (to save as JPEG)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            
+            # Calculate new size maintaining aspect ratio
+            original_w, original_h = img.size
+            
+            if w and not h:
+                # Resize by width
+                ratio = w / original_w
+                new_size = (w, int(original_h * ratio))
+            elif h and not w:
+                # Resize by height
+                ratio = h / original_h
+                new_size = (int(original_w * ratio), h)
+            else:
+                # Resize by bot
+                new_size = (w, h)
+                
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            
+            # Save to buffer
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85)
+            buf.seek(0)
+            
+            return Response(content=buf.getvalue(), media_type="image/jpeg")
+            
+    except Exception as e:
+        logger.error(f"Error resizing image: {e}")
+        # Fallback to original file if resizing fails
+        return FileResponse(path)
 

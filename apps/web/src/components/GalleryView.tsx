@@ -6,6 +6,7 @@ interface SearchMatch {
   id: string;
   source_path: string;
   distance: number;
+  photo_date: string;
   created_at: string;
 }
 
@@ -44,8 +45,10 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
   const lastPos = useRef({ x: 0, y: 0 });
   const imageRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  const getImageUrl = (sourcePath: string) => {
-    return `/api/image?path=${encodeURIComponent(sourcePath)}`;
+  const getImageUrl = (sourcePath: string, width?: number) => {
+    let url = `/api/image?path=${encodeURIComponent(sourcePath)}`;
+    if (width) url += `&w=${width}`;
+    return url;
   };
 
   // Group matches by date, sorted by date (newest first), then by distance within each group
@@ -55,9 +58,9 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     // Sort all matches by distance first
     const sortedMatches = [...matches].sort((a, b) => a.distance - b.distance);
     
-    // Group by date
+    // Group by actual photo date (from EXIF metadata)
     sortedMatches.forEach(match => {
-      const date = match.created_at.split("T")[0]; // Extract YYYY-MM-DD
+      const date = match.photo_date || match.created_at.split("T")[0];
       if (!groups.has(date)) {
         groups.set(date, []);
       }
@@ -320,16 +323,17 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
                     {match.distance < 100 ? "★" : `${match.distance.toFixed(0)}`}
                   </div>
 
-                  {/* Image - NO lazy loading for instant display */}
+                  {/* Image - Use thumbnail for grid */}
                   <img
-                    src={getImageUrl(match.source_path)}
+                    src={getImageUrl(match.source_path, 400)}
                     alt="Match"
+                    loading="lazy"
                     className="w-full block transition-transform duration-300 group-hover:scale-[1.02]"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
                       if (!img.dataset.retried) {
                         img.dataset.retried = "true";
-                        img.src = getImageUrl(match.source_path) + "&t=" + Date.now();
+                        img.src = getImageUrl(match.source_path, 400) + "&t=" + Date.now();
                       } else {
                         img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EUnavailable%3C/text%3E%3C/svg%3E";
                       }

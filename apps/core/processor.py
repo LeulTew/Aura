@@ -63,6 +63,37 @@ class FaceProcessor:
             logger.error(f"Error processing {img_path}: {e}")
             return None
 
+    def get_photo_date(self, img_path: str) -> str:
+        """
+        Extract photo date from EXIF metadata or fallback to file mtime.
+        Returns date in YYYY-MM-DD format.
+        """
+        from datetime import datetime
+        
+        # Try to extract EXIF date
+        try:
+            from PIL import Image
+            from PIL.ExifTags import TAGS
+            
+            with Image.open(img_path) as img:
+                exif_data = img._getexif()
+                if exif_data:
+                    for tag_id, value in exif_data.items():
+                        tag = TAGS.get(tag_id, tag_id)
+                        if tag == "DateTimeOriginal" or tag == "DateTime":
+                            # Format: "2025:07:16 18:54:03"
+                            date_str = value.split(" ")[0].replace(":", "-")
+                            return date_str
+        except Exception:
+            pass
+        
+        # Fallback to file modification time
+        try:
+            mtime = os.path.getmtime(img_path)
+            return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        except Exception:
+            return datetime.now().strftime("%Y-%m-%d")
+
     def scan_directory(self, directory_path: str) -> List[Dict[str, Any]]:
         """
         Scans a directory for images and returns a list of results.
@@ -78,6 +109,8 @@ class FaceProcessor:
                     if emb:
                         results.append({
                             "path": full_path,
-                            "embedding": emb
+                            "embedding": emb,
+                            "photo_date": self.get_photo_date(full_path)
                         })
         return results
+
