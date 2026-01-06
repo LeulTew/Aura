@@ -32,8 +32,8 @@ export default function BundlePage() {
         const bundleMatches: SearchMatch[] = data.photo_ids.map((path, idx) => ({
           id: `bundle-${idx}`,
           source_path: path,
-          distance: 0, // Curated, so perfect match
-          photo_date: "Unknown", // Backend could enrich this, but for now fallback
+          distance: 0,
+          photo_date: data.created_at || new Date().toISOString(), // Use bundle date to group them together
           created_at: data.created_at
         }));
         setMatches(bundleMatches);
@@ -75,8 +75,11 @@ export default function BundlePage() {
         </div>
       </div>
       
-      {/* Reuse the Gallery View */}
-      <GalleryView matches={matches} />
+      <GalleryView 
+        matches={matches} 
+        onBack={() => window.location.href = "/"}
+        isBundle={true}
+      />
     </main>
   );
 }

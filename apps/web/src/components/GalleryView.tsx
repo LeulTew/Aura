@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 
-interface SearchMatch {
+export interface SearchMatch {
   id: string;
   source_path: string;
   distance: number;
@@ -11,6 +11,7 @@ interface SearchMatch {
 interface GalleryViewProps {
   matches: SearchMatch[];
   onBack: () => void;
+  isBundle?: boolean;
 }
 
 interface TransitionState {
@@ -25,9 +26,9 @@ interface GroupedMatches {
   matches: SearchMatch[];
 }
 
-export default function GalleryView({ matches, onBack }: GalleryViewProps) {
-  const [selectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+export default function GalleryView({ matches, onBack, isBundle = false }: GalleryViewProps) {
+  const [selectMode, setSelectMode] = useState(isBundle);
+  const [selected, setSelected] = useState<Set<string>>(new Set(isBundle ? matches.map(m => m.id) : []));
   const [viewerOpen, setViewerOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState<SearchMatch | null>(null);
   const [scale, setScale] = useState(1);
@@ -37,6 +38,14 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     startRect: null, 
     match: null 
   });
+  
+  // Auto-select all for bundles if matches change
+  useEffect(() => {
+    if (isBundle && matches.length > 0) {
+      setSelectMode(true);
+      setSelected(new Set(matches.map(m => m.id)));
+    }
+  }, [isBundle, matches]);
   
   const viewerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -214,39 +223,38 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     const signal = abortControllerRef.current.signal;
 
     try {
-      const files: File[] = [];
-      
-      // 1. Fetch all blobs with progress and retry logic
-      for (let i = 0; i < toDownload.length; i++) {
+    try {
+      // 1. Fetch all blobs concurrently (Faster, preserves User Gesture for iOS Share)
+      const fetchPromises = toDownload.map(async (match, idx) => {
         if (signal.aborted) throw new Error("Download cancelled");
         
-        const match = toDownload[i];
-        let blob: Blob | null = null;
         let attempts = 0;
-        
-        // Retry loop (3 attempts)
-        while (!blob && attempts < 3) {
-          try {
-            if (signal.aborted) throw new Error("Download cancelled");
-            const response = await fetch(getImageUrl(match.source_path), { signal });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            blob = await response.blob();
-          } catch (err: any) {
-            if (err.message === "Download cancelled" || err.name === 'AbortError') throw err;
-            attempts++;
-            console.warn(`Fetch failed for ${match.id}, attempt ${attempts}/3`);
-            if (attempts === 3) throw err;
-            await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
-          }
+        while (attempts < 3) {
+           try {
+             // Update progress roughly
+             const response = await fetch(getImageUrl(match.source_path), { signal });
+             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+             const blob = await response.blob();
+             return { blob, match };
+           } catch (err: any) {
+             if (signal.aborted || err.name === 'AbortError') throw err;
+             attempts++;
+             if (attempts === 3) throw err;
+             await new Promise(r => setTimeout(r, 500)); 
+           }
         }
+        throw new Error("Failed to fetch");
+      });
 
-        if (!blob) throw new Error("Failed to fetch image");
-        
-        const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
-        files.push(new File([blob], filename, { type: blob.type }));
-        
-        setDownloadProgress({ current: i + 1, total: toDownload.length });
-      }
+      // Wait for all
+      const results = await Promise.all(fetchPromises);
+      setDownloadProgress({ current: results.length, total: results.length }); // Done fetching
+      
+      // Convert to Files
+      const files = results.map(({ blob, match }) => {
+         const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
+         return new File([blob], filename, { type: blob.type });
+      });
 
       // 2. Try Native Share (Mobile)
       if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
@@ -350,64 +358,82 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     <div className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
       {/* Top Bar */}
       <nav className="fixed top-0 left-0 w-full h-20 flex items-center justify-between px-6 md:px-10 bg-[rgba(5,5,5,0.9)] backdrop-blur-xl z-50 border-b border-white/5">
-        <button 
-          onClick={onBack}
-          className="font-mono font-bold text-sm tracking-tight uppercase hover:text-[var(--accent)] transition-colors"
-        >
-          ← Back
-        </button>
+        {!isBundle ? (
+          <button 
+            onClick={onBack}
+            className="font-mono font-bold text-sm tracking-tight uppercase hover:text-[var(--accent)] transition-colors"
+          >
+            ← Back
+          </button>
+        ) : (
+          <div className="font-mono font-bold text-sm tracking-tight uppercase text-[var(--accent)]">
+            Shared Bundle
+          </div>
+        )}
 
         <div className="flex gap-3">
-          {!selectMode ? (
-            <>
-              <button
-                onClick={() => setSelectMode(true)}
-                className="px-5 py-2.5 border border-white/20 font-mono text-[11px] font-bold uppercase tracking-wide hover:border-[var(--accent)] transition-all"
-              >
-                Select
-              </button>
-              <button
-                onClick={downloadAll}
-                className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all"
-              >
-                Download All
-              </button>
-            </>
+          {!isBundle ? (
+             !selectMode ? (
+              <>
+                <button
+                  onClick={() => setSelectMode(true)}
+                  className="px-5 py-2.5 border border-white/20 font-mono text-[11px] font-bold uppercase tracking-wide hover:border-[var(--accent)] transition-all"
+                >
+                  Select
+                </button>
+                <button
+                  onClick={downloadAll}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all"
+                >
+                  Download All
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={selectAll}
+                  className="px-5 py-2.5 border border-white/20 font-mono text-[11px] font-bold uppercase tracking-wide hover:border-[var(--accent)] transition-all"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() => { setSelectMode(false); setSelected(new Set()); }}
+                  className="px-5 py-2.5 border border-white/20 font-mono text-[11px] font-bold uppercase tracking-wide hover:border-red-400 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={downloadAll}
+                  disabled={selected.size === 0}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 transition-all disabled:opacity-50"
+                >
+                  Download ({selected.size})
+                </button>
+              </>
+            )
           ) : (
-            <>
-              <button
-                onClick={selectAll}
-                className="px-5 py-2.5 border border-white/20 font-mono text-[11px] font-bold uppercase tracking-wide hover:border-[var(--accent)] transition-all"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => { setSelectMode(false); setSelected(new Set()); }}
-                className="px-5 py-2.5 border border-white/20 font-mono text-[11px] font-bold uppercase tracking-wide hover:border-red-400 transition-all"
-              >
-                Cancel
-              </button>
-              <button
+            // Bundle Mode: Just the download button
+             <button
                 onClick={downloadAll}
-                disabled={selected.size === 0}
-                className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 transition-all disabled:opacity-50"
+                className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all animate-pulse"
               >
-                Download ({selected.size})
+                Download Bundle ({matches.length})
               </button>
-            </>
           )}
         </div>
       </nav>
 
       {/* Results Header */}
-      <div className="pt-28 pb-4 px-6 md:px-10 text-center">
-        <h1 className="text-3xl md:text-4xl font-semibold mb-2">
-          Found <span className="text-[var(--accent)]">{matches.length}</span> Matches
-        </h1>
-        <p className="text-gray-500 font-mono text-xs">
-          {matches.length > 0 && `Best match: ${(100 - matches[0].distance / 10).toFixed(1)}% similarity`}
-        </p>
-      </div>
+      {!isBundle && (
+        <div className="pt-28 pb-4 px-6 md:px-10 text-center">
+          <h1 className="text-3xl md:text-4xl font-semibold mb-2">
+            Found <span className="text-[var(--accent)]">{matches.length}</span> Matches
+          </h1>
+          <p className="text-gray-500 font-mono text-xs">
+            {matches.length > 0 && `Best match: ${(100 - matches[0].distance / 10).toFixed(1)}% similarity`}
+          </p>
+        </div>
+      )}
 
       {/* Date-Grouped Gallery */}
       <main className={`px-2 md:px-10 pb-10 max-w-[1800px] mx-auto transition-opacity duration-300 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}>
