@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import VoidBackground from "./VoidBackground";
 
 interface SearchMatch {
   id: string;
@@ -129,8 +128,7 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <VoidBackground />
+    <div className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
 
       {/* Top Bar */}
       <nav className="fixed top-0 left-0 w-full h-20 flex items-center justify-between px-6 md:px-10 bg-[rgba(5,5,5,0.9)] backdrop-blur-xl z-50 border-b border-white/5">
@@ -193,9 +191,9 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
         </p>
       </div>
 
-      {/* Masonry Grid */}
+      {/* Masonry Grid - always 2+ columns for compact preview */}
       <main 
-        className={`px-4 md:px-10 pb-10 columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 max-w-[1800px] mx-auto transition-opacity duration-500 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}
+        className={`px-2 md:px-10 pb-10 columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4 max-w-[1800px] mx-auto transition-opacity duration-500 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}
       >
         {matches.map((match, index) => (
           <div
@@ -218,15 +216,22 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
               {match.distance < 100 ? "★ Best Match" : `${match.distance.toFixed(0)}`}
             </div>
 
-            {/* Image */}
+            {/* Image with retry logic */}
             <img
               src={getImageUrl(match.source_path)}
               alt="Match"
               loading="lazy"
               className="w-full block transition-all duration-700 group-hover:scale-105 group-hover:saturate-100 saturate-[0.8] contrast-[1.1]"
               onError={(e) => {
-                // Fallback for broken images
-                (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
+                const img = e.target as HTMLImageElement;
+                // Try to reload with cache-buster if not already retried
+                if (!img.dataset.retried) {
+                  img.dataset.retried = "true";
+                  img.src = getImageUrl(match.source_path) + "&t=" + Date.now();
+                } else {
+                  // Final fallback
+                  img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
+                }
               }}
             />
           </div>

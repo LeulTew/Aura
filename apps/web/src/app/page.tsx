@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import VoidBackground from "@/components/VoidBackground";
 import ScannerButton from "@/components/ScannerButton";
 import StatusFooter from "@/components/StatusFooter";
@@ -16,11 +16,49 @@ interface SearchMatch {
   created_at: string;
 }
 
+const STORAGE_KEY = "aura_search_state";
+
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("landing");
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Restore state from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const { state, results } = JSON.parse(saved);
+        if (state === "results" && results?.length > 0) {
+          setAppState("results");
+          setSearchResults(results);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to restore state:", e);
+    }
+    setIsHydrated(true);
+  }, []);
+
+  // Save state to sessionStorage when results change
+  useEffect(() => {
+    if (isHydrated && appState === "results" && searchResults.length > 0) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        state: appState,
+        results: searchResults
+      }));
+    }
+  }, [appState, searchResults, isHydrated]);
+
+  // Clear storage when going back to landing
+  const handleBack = () => {
+    sessionStorage.removeItem(STORAGE_KEY);
+    setAppState("landing");
+    setSearchResults([]);
+    setError(null);
+  };
 
   const handleScanClick = () => {
     setAppState("scanning");
@@ -54,12 +92,6 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleBack = () => {
-    setAppState("landing");
-    setSearchResults([]);
-    setError(null);
   };
 
   // Camera View
