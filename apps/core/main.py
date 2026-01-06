@@ -418,6 +418,25 @@ async def create_bundle(req: BundleRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/bundles/{bundle_id}")
+async def get_bundle(bundle_id: str):
+    import json
+    
+    if not os.path.exists(BUNDLE_FILE):
+         raise HTTPException(status_code=404, detail="Bundle not found")
+         
+    try:
+        with open(BUNDLE_FILE, "r") as f:
+            bundles = json.load(f)
+            
+        if bundle_id not in bundles:
+            raise HTTPException(status_code=404, detail="Bundle not found")
+            
+        return bundles[bundle_id]
+    except Exception as e:
+        logger.error(f"Error reading bundle: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @app.get("/api/qr")
 async def generate_qr(url: str):
     import qrcode

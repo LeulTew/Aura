@@ -8,6 +8,7 @@
 - 🧠 **AI-Powered** — GhostFaceNet embeddings with LanceDB vector search
 - ⚡ **Instant Results** — Sub-second matching with thumbnail pre-loading
 - 📅 **Smart Organization** — Auto-groups photos by date (EXIF/Time)
+- 📦 **Bundle Sharing** — Curate photos into bundles and share via QR code
 - 🎨 **Premium UI** — Dark mode, glassmorphism, and smooth shared-element transitions
 - 📱 **Mobile-First** — Flip camera support, native share/save to camera roll
 
