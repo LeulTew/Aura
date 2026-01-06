@@ -367,7 +367,7 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
         >
           <button
             onClick={closeViewer}
-            className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center text-white text-2xl font-mono hover:text-[var(--accent)] transition-colors z-[1010] bg-black/50 rounded-full"
+            className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center text-white text-3xl font-light hover:text-[var(--accent)] transition-all z-[1010] bg-white/10 backdrop-blur-xl border border-white/20 rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] hover:bg-white/20 active:scale-95"
           >
             ×
           </button>

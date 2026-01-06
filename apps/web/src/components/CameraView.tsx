@@ -12,6 +12,7 @@ interface CameraViewProps {
 export default function CameraView({ onCapture, onBack, isProcessing = false }: CameraViewProps) {
   const webcamRef = useRef<Webcam>(null);
   const [isReady, setIsReady] = useState(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
   const handleCapture = useCallback(async () => {
     if (!webcamRef.current || isProcessing) return;
@@ -24,6 +25,10 @@ export default function CameraView({ onCapture, onBack, isProcessing = false }: 
     const blob = await res.blob();
     onCapture(blob);
   }, [onCapture, isProcessing]);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === "user" ? "environment" : "user");
+  };
 
   return (
     <div className="fixed inset-0 bg-[var(--bg)] flex flex-col overflow-hidden">
@@ -41,14 +46,14 @@ export default function CameraView({ onCapture, onBack, isProcessing = false }: 
           audio={false}
           screenshotFormat="image/jpeg"
           videoConstraints={{
-            facingMode: "user",
+            facingMode: facingMode,
             width: { ideal: 1280 },
             height: { ideal: 720 },
           }}
           onUserMedia={() => setIsReady(true)}
           className="absolute inset-0 w-full h-full object-cover"
           style={{ filter: "saturate(0.3) contrast(1.1) brightness(0.7)" }}
-          mirrored
+          mirrored={facingMode === "user"}
         />
 
         {/* Topography grid */}
@@ -61,6 +66,17 @@ export default function CameraView({ onCapture, onBack, isProcessing = false }: 
             maskImage: "radial-gradient(circle at center, black, transparent 80%)"
           }}
         />
+
+        {/* Flip Camera Button (Top Right) */}
+        <button
+          onClick={toggleCamera}
+          className="absolute top-6 right-6 w-10 h-10 bg-black/40 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white z-[110] hover:bg-white/10 transition-all active:scale-95"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8H2l5 6 5-6H9c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5V11h2v-1z"/>
+            <path d="M4 14c0 4.418 3.582 8 8 8s8-3.582 8-8h2l-5-6-5 6h3c0 2.485-2.015 4.5-4.5 4.5s-4.5-2.015-4.5-4.5v-1H4v1z"/>
+          </svg>
+        </button>
 
         {/* Corner accents */}
         <div className="absolute top-5 left-5 w-4 h-4 border-t-[1.5px] border-l-[1.5px] border-[var(--accent)]" />
