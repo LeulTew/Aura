@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [currentPath, setCurrentPath] = useState("/");
+  const [pathInput, setPathInput] = useState("/");
   const [folderData, setFolderData] = useState<FolderResponse | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [bundleName, setBundleName] = useState("");
@@ -34,6 +35,7 @@ export default function AdminPage() {
   // Fetch folder data
   useEffect(() => {
     if (!token) return;
+    setPathInput(currentPath); // Sync input when path changes (e.g. clicking folder)
     fetch(`/api/admin/folders?path=${encodeURIComponent(currentPath)}`)
       .then(res => res.json())
       .then(data => setFolderData(data))
@@ -115,11 +117,24 @@ export default function AdminPage() {
         
         {/* Left: File Browser */}
         <div className="lg:col-span-2 bg-[#111] rounded-xl border border-white/10 overflow-hidden flex flex-col">
-          <div className="p-4 bg-white/5 border-b border-white/10 flex gap-2 items-center font-mono text-xs overflow-x-auto whitespace-nowrap">
+          <div className="p-4 bg-white/5 border-b border-white/10 flex gap-2 items-center font-mono text-xs">
             <button onClick={() => setCurrentPath(folderData?.parent || "/")} disabled={!folderData?.parent} className="hover:text-[var(--accent)] disabled:opacity-30 px-2 py-1">
-              ⬆ UP PO
+              ⬆ UP
             </button>
-            <span className="text-gray-400">{currentPath}</span>
+            <form 
+              className="flex-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setCurrentPath(pathInput);
+              }}
+            >
+               <input 
+                type="text" 
+                value={pathInput}
+                onChange={(e) => setPathInput(e.target.value)}
+                className="w-full bg-transparent text-gray-400 focus:text-[var(--accent)] outline-none font-mono"
+              />
+            </form>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
