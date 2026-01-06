@@ -28,19 +28,21 @@ export default function Home() {
 
   // Restore state from sessionStorage on mount
   useEffect(() => {
+    setIsHydrated(true);
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const { state, results } = JSON.parse(saved);
-        if (state === "results" && results?.length > 0) {
-          setAppState("results");
-          setSearchResults(results);
+      if (typeof window !== "undefined") {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const { state, results } = JSON.parse(saved);
+          if (state === "results" && results?.length > 0) {
+            setSearchResults(results);
+            setAppState("results");
+          }
         }
       }
     } catch (e) {
       console.error("Failed to restore state:", e);
     }
-    setIsHydrated(true);
   }, []);
 
   // Save state to sessionStorage when results change
