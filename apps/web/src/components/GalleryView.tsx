@@ -14,6 +14,12 @@ interface GalleryViewProps {
   onBack: () => void;
 }
 
+interface TransitionState {
+  isAnimating: boolean;
+  startRect: DOMRect | null;
+  match: SearchMatch | null;
+}
+
 export default function GalleryView({ matches, onBack }: GalleryViewProps) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -21,57 +27,87 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
   const [currentImage, setCurrentImage] = useState<SearchMatch | null>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [transition, setTransition] = useState<TransitionState>({ 
+    isAnimating: false, 
+    startRect: null, 
+    match: null 
+  });
+  
   const viewerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
+  const imageRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  // Convert Windows paths to web-accessible paths
   const getImageUrl = (sourcePath: string) => {
-    // For now, we'll use a proxy endpoint - this needs backend support
-    // The backend stores images with their source_path
     return `/api/image?path=${encodeURIComponent(sourcePath)}`;
   };
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  const selectAll = () => {
-    setSelected(new Set(matches.map(m => m.id)));
-  };
+  const selectAll = () => setSelected(new Set(matches.map(m => m.id)));
 
-  const openViewer = (match: SearchMatch) => {
+  // Smooth open with position capture
+  const openViewer = (match: SearchMatch, e: React.MouseEvent) => {
     if (selectMode) {
       toggleSelect(match.id);
       return;
     }
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    
+    setTransition({ isAnimating: true, startRect: rect, match });
     setCurrentImage(match);
-    setViewerOpen(true);
+    
+    // Start animation after a frame
+    requestAnimationFrame(() => {
+      setViewerOpen(true);
+      // End animation state after transition completes
+      setTimeout(() => {
+        setTransition(prev => ({ ...prev, isAnimating: false }));
+      }, 350);
+    });
+    
     setScale(1);
     setPosition({ x: 0, y: 0 });
   };
 
+  // Smooth close
   const closeViewer = () => {
+    const match = currentImage;
+    if (!match) {
+      setViewerOpen(false);
+      setCurrentImage(null);
+      return;
+    }
+
+    const el = imageRefs.current.get(match.id);
+    const rect = el?.getBoundingClientRect() || null;
+    
+    setTransition({ isAnimating: true, startRect: rect, match });
     setViewerOpen(false);
-    setCurrentImage(null);
+    
+    setTimeout(() => {
+      setTransition({ isAnimating: false, startRect: null, match: null });
+      setCurrentImage(null);
+    }, 350);
   };
 
-  // Wheel zoom handler
+  // Wheel zoom
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     setScale(prev => Math.min(5, Math.max(1, prev * delta)));
   }, []);
 
-  // Mouse drag handlers
+  // Mouse drag
   const handleMouseDown = (e: React.MouseEvent) => {
     if (scale > 1) {
       isDragging.current = true;
@@ -88,9 +124,7 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     }
   };
 
-  const handleMouseUp = () => {
-    isDragging.current = false;
-  };
+  const handleMouseUp = () => { isDragging.current = false; };
 
   useEffect(() => {
     if (viewerOpen && viewerRef.current) {
@@ -99,7 +133,7 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     }
   }, [viewerOpen, handleWheel]);
 
-  // Download functionality
+  // Download
   const downloadImage = async (match: SearchMatch) => {
     try {
       const response = await fetch(getImageUrl(match.source_path));
@@ -121,15 +155,49 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     const toDownload = selectMode && selected.size > 0 
       ? matches.filter(m => selected.has(m.id))
       : matches;
+    for (const match of toDownload) await downloadImage(match);
+  };
+
+  // Calculate animation styles for transition overlay
+  const getTransitionStyle = (): React.CSSProperties => {
+    const { isAnimating, startRect } = transition;
     
-    for (const match of toDownload) {
-      await downloadImage(match);
+    if (!startRect) return { opacity: 0, pointerEvents: "none" };
+    
+    if (isAnimating && !viewerOpen) {
+      // Closing: animate back to thumbnail
+      return {
+        position: "fixed",
+        top: startRect.top,
+        left: startRect.left,
+        width: startRect.width,
+        height: startRect.height,
+        transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+        zIndex: 2000,
+        objectFit: "cover" as const,
+        borderRadius: "4px",
+      };
     }
+    
+    if (isAnimating && viewerOpen) {
+      // Opening: start from thumbnail, animate to fullscreen
+      return {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+        zIndex: 2000,
+        objectFit: "contain" as const,
+      };
+    }
+    
+    return { opacity: 0, pointerEvents: "none" };
   };
 
   return (
     <div className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
-
       {/* Top Bar */}
       <nav className="fixed top-0 left-0 w-full h-20 flex items-center justify-between px-6 md:px-10 bg-[rgba(5,5,5,0.9)] backdrop-blur-xl z-50 border-b border-white/5">
         <button 
@@ -191,46 +259,45 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
         </p>
       </div>
 
-      {/* Masonry Grid - always 2+ columns for compact preview */}
+      {/* Masonry Grid */}
       <main 
-        className={`px-2 md:px-10 pb-10 columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4 max-w-[1800px] mx-auto transition-opacity duration-500 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}
+        className={`px-2 md:px-10 pb-10 columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4 max-w-[1800px] mx-auto transition-opacity duration-300 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}
       >
         {matches.map((match, index) => (
           <div
             key={match.id}
-            onClick={() => openViewer(match)}
-            className="relative break-inside-avoid mb-4 bg-[#111] cursor-pointer overflow-hidden group"
-            style={{ animationDelay: `${index * 50}ms` }}
+            ref={(el) => { if (el) imageRefs.current.set(match.id, el); }}
+            onClick={(e) => openViewer(match, e)}
+            className="relative break-inside-avoid mb-2 md:mb-4 bg-[#111] cursor-pointer overflow-hidden group rounded"
+            style={{ animationDelay: `${index * 30}ms` }}
           >
             {/* Selection checkbox */}
             <div 
-              className={`absolute top-3 right-3 w-6 h-6 border-2 border-white bg-black/50 z-10 flex items-center justify-center transition-all ${
+              className={`absolute top-2 right-2 w-5 h-5 border-2 border-white bg-black/50 z-10 flex items-center justify-center transition-opacity ${
                 selectMode ? 'opacity-100' : 'opacity-0'
               } ${selected.has(match.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : ''}`}
             >
-              {selected.has(match.id) && <span className="text-white text-sm">✓</span>}
+              {selected.has(match.id) && <span className="text-white text-xs">✓</span>}
             </div>
 
             {/* Distance badge */}
-            <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/70 backdrop-blur-sm rounded font-mono text-[10px] text-[var(--accent)] z-10">
-              {match.distance < 100 ? "★ Best Match" : `${match.distance.toFixed(0)}`}
+            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/70 backdrop-blur-sm rounded font-mono text-[9px] text-[var(--accent)] z-10">
+              {match.distance < 100 ? "★" : `${match.distance.toFixed(0)}`}
             </div>
 
-            {/* Image with retry logic */}
+            {/* Image */}
             <img
               src={getImageUrl(match.source_path)}
               alt="Match"
               loading="lazy"
-              className="w-full block transition-all duration-700 group-hover:scale-105 group-hover:saturate-100 saturate-[0.8] contrast-[1.1]"
+              className="w-full block transition-transform duration-300 group-hover:scale-[1.02]"
               onError={(e) => {
                 const img = e.target as HTMLImageElement;
-                // Try to reload with cache-buster if not already retried
                 if (!img.dataset.retried) {
                   img.dataset.retried = "true";
                   img.src = getImageUrl(match.source_path) + "&t=" + Date.now();
                 } else {
-                  // Final fallback
-                  img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
+                  img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EUnavailable%3C/text%3E%3C/svg%3E";
                 }
               }}
             />
@@ -238,11 +305,20 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
         ))}
       </main>
 
+      {/* Transition Overlay (lightweight CSS-only animation) */}
+      {transition.isAnimating && transition.match && (
+        <img
+          src={getImageUrl(transition.match.source_path)}
+          alt="Transition"
+          style={getTransitionStyle()}
+        />
+      )}
+
       {/* Fullscreen Viewer */}
-      {viewerOpen && currentImage && (
+      {viewerOpen && currentImage && !transition.isAnimating && (
         <div
           ref={viewerRef}
-          className="fixed inset-0 bg-[var(--bg)] z-[1000] flex items-center justify-center"
+          className="fixed inset-0 bg-[var(--bg)] z-[1000] flex items-center justify-center animate-fade-in"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -251,7 +327,7 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
           {/* Close button */}
           <button
             onClick={closeViewer}
-            className="absolute top-10 right-10 text-white text-3xl font-mono hover:text-[var(--accent)] transition-colors z-[1010]"
+            className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center text-white text-2xl font-mono hover:text-[var(--accent)] transition-colors z-[1010] bg-black/50 rounded-full"
           >
             ×
           </button>
@@ -260,22 +336,23 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
           <img
             src={getImageUrl(currentImage.source_path)}
             alt="Full view"
-            className="max-w-full max-h-full object-contain select-none transition-transform duration-100"
+            className="max-w-full max-h-full object-contain select-none"
             style={{
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-              cursor: scale > 1 ? "grab" : "default"
+              cursor: scale > 1 ? "grab" : "default",
+              transition: scale === 1 ? "transform 0.1s" : "none"
             }}
             draggable={false}
           />
 
           {/* Bottom UI */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-5 items-center z-[1010]">
-            <p className="font-mono text-xs text-gray-400">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 items-center z-[1010]">
+            <p className="font-mono text-xs text-gray-400 hidden sm:block">
               {currentImage.source_path.split("/").pop()}
             </p>
             <button
               onClick={() => downloadImage(currentImage)}
-              className="px-8 py-3 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-sm font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all"
+              className="px-6 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-sm font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all rounded"
             >
               Download
             </button>
@@ -283,12 +360,23 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
 
           {/* Zoom indicator */}
           {scale > 1 && (
-            <div className="absolute top-10 left-10 font-mono text-xs text-gray-400">
+            <div className="absolute top-6 left-6 font-mono text-xs text-gray-400 bg-black/50 px-2 py-1 rounded">
               {(scale * 100).toFixed(0)}%
             </div>
           )}
         </div>
       )}
+
+      {/* Animation keyframes */}
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
