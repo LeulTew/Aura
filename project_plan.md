@@ -28,8 +28,9 @@ Aura bridges the gap between high-volume photography and instant delivery. By ut
   - **Database:** PostgreSQL (Relational Data), pgvector or ChromaDB (Vector Data).
   - **Storage:** Local Filesystem served via Nginx OR S3-compatible storage (MinIO).
 - **AI Engine (Scanner):**
-  - **Face Recognition:** `insightface` (SOTA, precise).
-  - **Processing:** OpenCV / NumPy.
+  - **Wrapper:** `deepface` (MIT Licensed).
+  - **Model:** `GhostFaceNet` (99.7% accuracy, CPU-optimized).
+  - **Detector:** `YuNet` (Apache 2.0, ~50ms per face).
 
 ### Deployment Strategy (Free Tier Focused)
 
