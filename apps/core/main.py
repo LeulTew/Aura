@@ -192,8 +192,8 @@ async def scan_directory(
 @app.post("/api/search", response_model=SearchResponse)
 async def search_faces(
     file: UploadFile = File(...),
-    limit: int = Query(default=10, ge=1, le=50, description="Max results to return"),
-    max_distance: float = Query(default=300.0, ge=0, description="Maximum distance threshold for matches")
+    limit: int = Query(default=100, ge=1, le=500, description="Max results to return"),
+    max_distance: float = Query(default=9999.0, ge=0, description="Maximum distance threshold for matches")
 ):
     """
     Upload a selfie to find matching faces in the database.

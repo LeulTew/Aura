@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 interface SearchMatch {
   id: string;
@@ -18,6 +18,12 @@ interface TransitionState {
   isAnimating: boolean;
   startRect: DOMRect | null;
   match: SearchMatch | null;
+}
+
+interface GroupedMatches {
+  date: string;
+  dateLabel: string;
+  matches: SearchMatch[];
 }
 
 export default function GalleryView({ matches, onBack }: GalleryViewProps) {
@@ -42,6 +48,32 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     return `/api/image?path=${encodeURIComponent(sourcePath)}`;
   };
 
+  // Group matches by date, sorted by date (newest first), then by distance within each group
+  const groupedMatches = useMemo((): GroupedMatches[] => {
+    const groups = new Map<string, SearchMatch[]>();
+    
+    // Sort all matches by distance first
+    const sortedMatches = [...matches].sort((a, b) => a.distance - b.distance);
+    
+    // Group by date
+    sortedMatches.forEach(match => {
+      const date = match.created_at.split("T")[0]; // Extract YYYY-MM-DD
+      if (!groups.has(date)) {
+        groups.set(date, []);
+      }
+      groups.get(date)!.push(match);
+    });
+    
+    // Convert to array and sort by date (newest first)
+    return Array.from(groups.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, dateMatches]) => ({
+        date,
+        dateLabel: formatDateLabel(date),
+        matches: dateMatches // Already sorted by distance
+      }));
+  }, [matches]);
+
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -53,7 +85,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
 
   const selectAll = () => setSelected(new Set(matches.map(m => m.id)));
 
-  // Smooth open with position capture
   const openViewer = (match: SearchMatch, e: React.MouseEvent) => {
     if (selectMode) {
       toggleSelect(match.id);
@@ -66,10 +97,8 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     setTransition({ isAnimating: true, startRect: rect, match });
     setCurrentImage(match);
     
-    // Start animation after a frame
     requestAnimationFrame(() => {
       setViewerOpen(true);
-      // End animation state after transition completes
       setTimeout(() => {
         setTransition(prev => ({ ...prev, isAnimating: false }));
       }, 350);
@@ -79,7 +108,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     setPosition({ x: 0, y: 0 });
   };
 
-  // Smooth close
   const closeViewer = () => {
     const match = currentImage;
     if (!match) {
@@ -100,14 +128,12 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     }, 350);
   };
 
-  // Wheel zoom
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     setScale(prev => Math.min(5, Math.max(1, prev * delta)));
   }, []);
 
-  // Mouse drag
   const handleMouseDown = (e: React.MouseEvent) => {
     if (scale > 1) {
       isDragging.current = true;
@@ -133,7 +159,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     }
   }, [viewerOpen, handleWheel]);
 
-  // Download
   const downloadImage = async (match: SearchMatch) => {
     try {
       const response = await fetch(getImageUrl(match.source_path));
@@ -158,14 +183,12 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     for (const match of toDownload) await downloadImage(match);
   };
 
-  // Calculate animation styles for transition overlay
   const getTransitionStyle = (): React.CSSProperties => {
     const { isAnimating, startRect } = transition;
     
     if (!startRect) return { opacity: 0, pointerEvents: "none" };
     
     if (isAnimating && !viewerOpen) {
-      // Closing: animate back to thumbnail
       return {
         position: "fixed",
         top: startRect.top,
@@ -180,7 +203,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     }
     
     if (isAnimating && viewerOpen) {
-      // Opening: start from thumbnail, animate to fullscreen
       return {
         position: "fixed",
         top: 0,
@@ -259,53 +281,68 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
         </p>
       </div>
 
-      {/* Masonry Grid */}
-      <main 
-        className={`px-2 md:px-10 pb-10 columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4 max-w-[1800px] mx-auto transition-opacity duration-300 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}
-      >
-        {matches.map((match, index) => (
-          <div
-            key={match.id}
-            ref={(el) => { if (el) imageRefs.current.set(match.id, el); }}
-            onClick={(e) => openViewer(match, e)}
-            className="relative break-inside-avoid mb-2 md:mb-4 bg-[#111] cursor-pointer overflow-hidden group rounded"
-            style={{ animationDelay: `${index * 30}ms` }}
-          >
-            {/* Selection checkbox */}
-            <div 
-              className={`absolute top-2 right-2 w-5 h-5 border-2 border-white bg-black/50 z-10 flex items-center justify-center transition-opacity ${
-                selectMode ? 'opacity-100' : 'opacity-0'
-              } ${selected.has(match.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : ''}`}
-            >
-              {selected.has(match.id) && <span className="text-white text-xs">✓</span>}
+      {/* Date-Grouped Gallery */}
+      <main className={`px-2 md:px-10 pb-10 max-w-[1800px] mx-auto transition-opacity duration-300 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}>
+        {groupedMatches.map((group, groupIndex) => (
+          <div key={group.date} className="mb-8">
+            {/* Date Separator */}
+            <div className="flex items-center gap-4 mb-4 px-2">
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <span className="font-mono text-xs text-[var(--accent)] uppercase tracking-wider whitespace-nowrap">
+                {group.dateLabel}
+              </span>
+              <span className="font-mono text-[10px] text-gray-500">
+                ({group.matches.length})
+              </span>
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </div>
+            
+            {/* Grid for this date */}
+            <div className="columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4">
+              {group.matches.map((match) => (
+                <div
+                  key={match.id}
+                  ref={(el) => { if (el) imageRefs.current.set(match.id, el); }}
+                  onClick={(e) => openViewer(match, e)}
+                  className="relative break-inside-avoid mb-2 md:mb-4 bg-[#111] cursor-pointer overflow-hidden group rounded"
+                >
+                  {/* Selection checkbox */}
+                  <div 
+                    className={`absolute top-2 right-2 w-5 h-5 border-2 border-white bg-black/50 z-10 flex items-center justify-center transition-opacity ${
+                      selectMode ? 'opacity-100' : 'opacity-0'
+                    } ${selected.has(match.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : ''}`}
+                  >
+                    {selected.has(match.id) && <span className="text-white text-xs">✓</span>}
+                  </div>
 
-            {/* Distance badge */}
-            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/70 backdrop-blur-sm rounded font-mono text-[9px] text-[var(--accent)] z-10">
-              {match.distance < 100 ? "★" : `${match.distance.toFixed(0)}`}
+                  {/* Distance badge */}
+                  <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/70 backdrop-blur-sm rounded font-mono text-[9px] text-[var(--accent)] z-10">
+                    {match.distance < 100 ? "★" : `${match.distance.toFixed(0)}`}
+                  </div>
+
+                  {/* Image - NO lazy loading for instant display */}
+                  <img
+                    src={getImageUrl(match.source_path)}
+                    alt="Match"
+                    className="w-full block transition-transform duration-300 group-hover:scale-[1.02]"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!img.dataset.retried) {
+                        img.dataset.retried = "true";
+                        img.src = getImageUrl(match.source_path) + "&t=" + Date.now();
+                      } else {
+                        img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EUnavailable%3C/text%3E%3C/svg%3E";
+                      }
+                    }}
+                  />
+                </div>
+              ))}
             </div>
-
-            {/* Image */}
-            <img
-              src={getImageUrl(match.source_path)}
-              alt="Match"
-              loading="lazy"
-              className="w-full block transition-transform duration-300 group-hover:scale-[1.02]"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                if (!img.dataset.retried) {
-                  img.dataset.retried = "true";
-                  img.src = getImageUrl(match.source_path) + "&t=" + Date.now();
-                } else {
-                  img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23111'%3E%3Crect width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' fill='%23333' text-anchor='middle' dy='.3em' font-family='sans-serif'%3EUnavailable%3C/text%3E%3C/svg%3E";
-                }
-              }}
-            />
           </div>
         ))}
       </main>
 
-      {/* Transition Overlay (lightweight CSS-only animation) */}
+      {/* Transition Overlay */}
       {transition.isAnimating && transition.match && (
         <img
           src={getImageUrl(transition.match.source_path)}
@@ -324,7 +361,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          {/* Close button */}
           <button
             onClick={closeViewer}
             className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center text-white text-2xl font-mono hover:text-[var(--accent)] transition-colors z-[1010] bg-black/50 rounded-full"
@@ -332,7 +368,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
             ×
           </button>
 
-          {/* Main image */}
           <img
             src={getImageUrl(currentImage.source_path)}
             alt="Full view"
@@ -345,7 +380,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
             draggable={false}
           />
 
-          {/* Bottom UI */}
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 items-center z-[1010]">
             <p className="font-mono text-xs text-gray-400 hidden sm:block">
               {currentImage.source_path.split("/").pop()}
@@ -358,7 +392,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
             </button>
           </div>
 
-          {/* Zoom indicator */}
           {scale > 1 && (
             <div className="absolute top-6 left-6 font-mono text-xs text-gray-400 bg-black/50 px-2 py-1 rounded">
               {(scale * 100).toFixed(0)}%
@@ -367,7 +400,6 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
         </div>
       )}
 
-      {/* Animation keyframes */}
       <style jsx>{`
         @keyframes fade-in {
           from { opacity: 0; }
@@ -379,4 +411,26 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
       `}</style>
     </div>
   );
+}
+
+// Helper to format date labels
+function formatDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (dateStr === today.toISOString().split("T")[0]) {
+    return "Today";
+  }
+  if (dateStr === yesterday.toISOString().split("T")[0]) {
+    return "Yesterday";
+  }
+  
+  return date.toLocaleDateString("en-US", { 
+    weekday: "short", 
+    month: "short", 
+    day: "numeric",
+    year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined
+  });
 }
