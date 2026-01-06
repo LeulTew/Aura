@@ -134,8 +134,6 @@ export default function AdminPage() {
             </button>
             <form 
               className="flex-1"
-            <form 
-              className="flex-1"
               onSubmit={(e) => {
                 e.preventDefault();
                 let cleanPath = pathInput.trim();
