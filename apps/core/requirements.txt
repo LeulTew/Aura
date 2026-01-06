@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 numpy
-## AI Dependencies (To be installed later/checked for compatibility)
-# insightface
-# opencv-python
-## Database
+deepface
+opencv-python
+tf-keras
+pillow
+python-multipart
+# Database
 # asyncpg

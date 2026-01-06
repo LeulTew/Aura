@@ -58,15 +58,15 @@ Aura bridges the gap between high-volume photography and instant delivery. By ut
 ### Phase 1: Foundation (Current)
 
 - [x] **Repo Setup:** GitHub Repo Created.
-- [ ] **Environment Setup:** Initialize `bun` project for Frontend, `uv` or `poetry` for Python Backend.
-- [ ] **Design:** Generate assets using prompts.
-- [ ] **Prototype:** "Hello World" connection between Next.js and FastAPI.
+- [x] **Environment Setup:** pnpm (Frontend), Python venv (Backend).
+- [x] **Design:** Logo generated, Obsidian & Neon theme applied.
+- [x] **Prototype:** Hello World connection verified.
 
 ### Phase 2: The Scanner (Backend/AI)
 
-- [ ] **Face Models:** Integrate `insightface`.
-- [ ] **Indexing Engine:** Python script to walk directories, hash images, detect faces.
-- [ ] **API:** `/search` endpoint accepting a face embedding.
+- [x] **Face Models:** Integrated `deepface` (GhostFaceNet + YuNet).
+- [x] **Indexing Engine:** `FaceProcessor.scan_directory()` implemented.
+- [x] **API:** `/api/embed` and `/api/scan` endpoints working.
 
 ### Phase 3: The Experience (Frontend)
 
@@ -86,19 +86,19 @@ Aura bridges the gap between high-volume photography and instant delivery. By ut
 
 ## 4. Implementation Checklist
 
-| ID      | Task                                          | Status | Branch              |
-| ------- | --------------------------------------------- | ------ | ------------------- |
-| **1.0** | **Setup**                                     |        |                     |
-| 1.1     | Initialize Monorepo (Next.js/Bun + FastAPI)   | [/]    | `feat/init`         |
-| 1.2     | Configure Cloudflare Tunnel / Dev Environment | [ ]    | `feat/infra`        |
-| **2.0** | **Backend (Core + AI)**                       |        |                     |
-| 2.1     | Setup FastAPI + PostgreSQL (pgvector)         | [ ]    | `feat/backend-core` |
-| 2.2     | Implement `FaceProcessor` (InsightFace)       | [ ]    | `feat/ai-engine`    |
-| 2.3     | Create Directory Watcher/Indexer              | [ ]    | `feat/indexer`      |
-| **3.0** | **Frontend (Client)**                         |        |                     |
-| 3.1     | Setup Next.js + Tailwind + Theme (Bun)        | [ ]    | `feat/ui-setup`     |
-| 3.2     | Camera Component (react-webcam/custom)        | [ ]    | `feat/camera`       |
-| 3.3     | Result Gallery & Download Flow                | [ ]    | `feat/gallery`      |
+| ID      | Task                                         | Status | Branch           |
+| ------- | -------------------------------------------- | ------ | ---------------- |
+| **1.0** | **Setup**                                    |        |                  |
+| 1.1     | Initialize Monorepo (Next.js/pnpm + FastAPI) | [x]    | `feat/init`      |
+| 1.2     | Configure Dev Environment                    | [x]    | `feat/init`      |
+| **2.0** | **Backend (Core + AI)**                      |        |                  |
+| 2.1     | Setup FastAPI + Endpoints                    | [x]    | `feat/ai-engine` |
+| 2.2     | Implement `FaceProcessor` (DeepFace)         | [x]    | `feat/ai-engine` |
+| 2.3     | Create Directory Scanner                     | [x]    | `feat/ai-engine` |
+| **3.0** | **Frontend (Client)**                        |        |                  |
+| 3.1     | Setup Next.js + Tailwind + Theme (Bun)       | [ ]    | `feat/ui-setup`  |
+| 3.2     | Camera Component (react-webcam/custom)       | [ ]    | `feat/camera`    |
+| 3.3     | Result Gallery & Download Flow               | [ ]    | `feat/gallery`   |
 
 ## 5. UI Design Prompts (Ready for Generation)
 
