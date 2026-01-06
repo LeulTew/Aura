@@ -50,3 +50,6 @@ build/
 # Misc
 .gemini/
 tmp/
+
+# LanceDB data (binary, should not be committed)
+apps/core/data/

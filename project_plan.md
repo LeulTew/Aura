@@ -24,9 +24,11 @@ Aura bridges the gap between high-volume photography and instant delivery. By ut
   - **State:** Zustand or TanStack Query.
 - **Backend (Core):**
   - **Language:** Python (FastAPI) - selected for access to SOTA AI libraries.
-    - _Note: While the frontend uses Bun, Python is required for `insightface`, widely considered the best open-source face recognition library._
-  - **Database:** PostgreSQL (Relational Data), pgvector or ChromaDB (Vector Data).
-  - **Storage:** Local Filesystem served via Nginx OR S3-compatible storage (MinIO).
+    - _Note: Python is required for `deepface` + `GhostFaceNet`, which provides best-in-class accuracy with permissive licensing._
+  - **Vector Database:** **LanceDB** (Embedded, Serverless).
+    - Zero-copy disk-based indexing = instant startup, low RAM.
+    - Native binary column storage for face crops alongside embeddings.
+  - **Storage:** Local Filesystem (served via static file server or Next.js rewrites).
 - **AI Engine (Scanner):**
   - **Wrapper:** `deepface` (MIT Licensed).
   - **Model:** `GhostFaceNet` (99.7% accuracy, CPU-optimized).

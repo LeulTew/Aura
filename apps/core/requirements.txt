@@ -6,5 +6,4 @@ opencv-python
 tf-keras
 pillow
 python-multipart
-# Database
-# asyncpg
+lancedb
