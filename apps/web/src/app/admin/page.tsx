@@ -35,11 +35,22 @@ export default function AdminPage() {
   // Fetch folder data
   useEffect(() => {
     if (!token) return;
-    setPathInput(currentPath); // Sync input when path changes (e.g. clicking folder)
+    setPathInput(currentPath); // Sync input when path changes
     fetch(`/api/admin/folders?path=${encodeURIComponent(currentPath)}`)
-      .then(res => res.json())
-      .then(data => setFolderData(data))
-      .catch(err => console.error(err));
+      .then(async res => {
+        if (!res.ok) throw new Error((await res.json()).detail || "Failed to load folder");
+        return res.json();
+      })
+      .then(data => {
+        if (!data.items) data.items = []; // Defensive
+        setFolderData(data);
+        setError("");
+      })
+      .catch(err => {
+        console.error(err);
+        setError(err.message);
+        setFolderData({ path: currentPath, parent: null, items: [] }); // Empty state on error
+      });
   }, [currentPath, token]);
 
   const handleLogin = async (e: React.FormEvent) => {
