@@ -192,10 +192,12 @@ async def scan_directory(
 @app.post("/api/search", response_model=SearchResponse)
 async def search_faces(
     file: UploadFile = File(...),
-    limit: int = Query(default=5, ge=1, le=50, description="Max results to return")
+    limit: int = Query(default=10, ge=1, le=50, description="Max results to return"),
+    max_distance: float = Query(default=300.0, ge=0, description="Maximum distance threshold for matches")
 ):
     """
     Upload a selfie to find matching faces in the database.
+    Only returns matches below the distance threshold.
     """
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
@@ -218,11 +220,14 @@ async def search_faces(
         
         # Search database
         from database import search_similar
-        matches = search_similar(query_embedding, limit=limit)
+        all_matches = search_similar(query_embedding, limit=limit)
+        
+        # Filter by distance threshold
+        filtered_matches = [m for m in all_matches if m["distance"] <= max_distance]
         
         return SearchResponse(
             success=True,
-            matches=[SearchMatch(**m) for m in matches]
+            matches=[SearchMatch(**m) for m in filtered_matches]
         )
     
     except Exception as e:
