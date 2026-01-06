@@ -216,13 +216,32 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     try {
       const files: File[] = [];
       
-      // 1. Fetch all blobs with progress
+      // 1. Fetch all blobs with progress and retry logic
       for (let i = 0; i < toDownload.length; i++) {
         if (signal.aborted) throw new Error("Download cancelled");
         
         const match = toDownload[i];
-        const response = await fetch(getImageUrl(match.source_path), { signal });
-        const blob = await response.blob();
+        let blob: Blob | null = null;
+        let attempts = 0;
+        
+        // Retry loop (3 attempts)
+        while (!blob && attempts < 3) {
+          try {
+            if (signal.aborted) throw new Error("Download cancelled");
+            const response = await fetch(getImageUrl(match.source_path), { signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            blob = await response.blob();
+          } catch (err: any) {
+            if (err.message === "Download cancelled" || err.name === 'AbortError') throw err;
+            attempts++;
+            console.warn(`Fetch failed for ${match.id}, attempt ${attempts}/3`);
+            if (attempts === 3) throw err;
+            await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+          }
+        }
+
+        if (!blob) throw new Error("Failed to fetch image");
+        
         const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
         files.push(new File([blob], filename, { type: blob.type }));
         
