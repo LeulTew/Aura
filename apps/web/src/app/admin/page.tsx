@@ -136,18 +136,29 @@ export default function AdminPage() {
               className="flex-1"
               onSubmit={(e) => {
                 e.preventDefault();
-                setCurrentPath(pathInput);
+                if (!pathInput.trim()) {
+                  setPathInput("/");
+                  setCurrentPath("/");
+                } else {
+                  setCurrentPath(pathInput);
+                }
               }}
             >
                <input 
                 type="text" 
                 value={pathInput}
                 onChange={(e) => setPathInput(e.target.value)}
-                className="w-full bg-transparent text-gray-400 focus:text-[var(--accent)] outline-none font-mono"
+                className={`w-full bg-transparent outline-none font-mono ${error ? "text-red-400" : "text-gray-400 focus:text-[var(--accent)]"}`}
               />
             </form>
           </div>
-
+          
+          {error && (
+            <div className="bg-red-500/10 border-b border-red-500/20 p-2 text-center">
+              <p className="text-red-400 text-xs font-mono">{error} - Check path and permissions</p>
+            </div>
+          )}
+          
           <div className="flex-1 overflow-y-auto p-4">
             {folderData?.items.map((item) => (
               <div 
