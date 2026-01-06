@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 
 interface SearchMatch {
   id: string;
@@ -179,6 +179,10 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
     }
   };
 
+  // Download state
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const downloadAll = async () => {
     const toDownload = selectMode && selected.size > 0 
       ? matches.filter(m => selected.has(m.id))
@@ -190,17 +194,28 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
       return;
     }
 
+    // Initialize progress
+    setDownloadProgress({ current: 0, total: toDownload.length });
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     try {
-      // 1. Fetch all blobs first
-      const files = await Promise.all(toDownload.map(async (match) => {
-        const response = await fetch(getImageUrl(match.source_path));
+      const files: File[] = [];
+      
+      // 1. Fetch all blobs with progress
+      for (let i = 0; i < toDownload.length; i++) {
+        if (signal.aborted) throw new Error("Download cancelled");
+        
+        const match = toDownload[i];
+        const response = await fetch(getImageUrl(match.source_path), { signal });
         const blob = await response.blob();
         const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
-        // Create JS File object with correct MIME type
-        return new File([blob], filename, { type: blob.type });
-      }));
+        files.push(new File([blob], filename, { type: blob.type }));
+        
+        setDownloadProgress({ current: i + 1, total: toDownload.length });
+      }
 
-      // 2. Try Native Share (Mobile - Save Image)
+      // 2. Try Native Share (Mobile)
       if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
         try {
           await navigator.share({
@@ -208,20 +223,21 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
             title: 'Aura Photos',
             text: `Here are ${files.length} photos from Aura`
           });
-          setSelectMode(false);
-          setSelected(new Set());
+          resetDownloadState();
           return;
         } catch (shareErr: any) {
-          // Ignore abort errors (user cancelled share sheet)
           if (shareErr.name !== 'AbortError') {
             console.warn("Share failed, falling back to ZIP:", shareErr);
           } else {
-             return; // User cancelled, don't try ZIP
+             resetDownloadState();
+             return; 
           }
         }
       }
 
-      // 3. Fallback: ZIP (Desktop / Unsupported Mobile)
+      // 3. Fallback: ZIP
+      if (signal.aborted) return;
+      
       const JSZip = (await import("jszip")).default;
       const { saveAs } = (await import("file-saver"));
       const zip = new JSZip();
@@ -231,15 +247,35 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
       });
 
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, `aura-photos-${new Date().toISOString().split('T')[0]}.zip`);
+      if (!signal.aborted) {
+        saveAs(content, `aura-photos-${new Date().toISOString().split('T')[0]}.zip`);
+      }
       
-      setSelectMode(false);
-      setSelected(new Set());
+      resetDownloadState();
 
-    } catch (err) {
-      console.error("Download failed:", err);
-      alert("Failed to download photos. Please try again.");
+    } catch (err: any) {
+      if (err.message === "Download cancelled") {
+        console.log("Download cancelled by user");
+      } else {
+        console.error("Download failed:", err);
+        alert("Download failed. Please try again.");
+      }
+      resetDownloadState();
     }
+  };
+
+  const cancelDownload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    resetDownloadState();
+  };
+
+  const resetDownloadState = () => {
+    setDownloadProgress(null);
+    abortControllerRef.current = null;
+    setSelectMode(false);
+    setSelected(new Set());
   };
 
   const getTransitionStyle = (): React.CSSProperties => {
@@ -469,6 +505,22 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
           animation: fade-in 0.2s ease-out;
         }
       `}</style>
+      {/* Download Progress Overlay */}
+      {downloadProgress && (
+        <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+          <div className="w-16 h-16 border-4 border-white/20 border-t-[var(--accent)] rounded-full animate-spin mb-6" />
+          <h3 className="text-xl font-light text-white mb-2">Preparing Photos...</h3>
+          <p className="font-mono text-sm text-gray-400 mb-8">
+            {downloadProgress.current} / {downloadProgress.total} ready
+          </p>
+          <button
+            onClick={cancelDownload}
+            className="px-8 py-3 border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-full font-mono text-xs uppercase tracking-widest transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
