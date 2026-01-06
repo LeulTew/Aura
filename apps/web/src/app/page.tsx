@@ -97,6 +97,15 @@ export default function Home() {
     }
   };
 
+  // Loading state
+  if (!isHydrated) {
+    return (
+      <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black">
+        <VoidBackground />
+      </main>
+    );
+  }
+
   // Camera View
   if (appState === "scanning") {
     return (
