@@ -1,0 +1,35 @@
+# Aura Agent Rules
+
+These rules must be followed by all AI agents working on this project.
+
+## 1. Environment Strictness
+
+- **Runtime**: ALWAYS use `bun` for JavaScript/TypeScript execution and package management (e.g., `bun run dev`, `bun add`, or `pnpm` if bun fails).
+- **Backend**: Use the `venv` at `apps/core/venv`. Activate it or use the full path (`apps/core/venv/bin/python`).
+- **No Global Installs**: Avoid installing global packages. Use project-local dependencies.
+
+## 2. Code Quality & Typing
+
+- **No `any`**: Explicitly define interfaces and types. Use `unknown` with narrowing if necessary.
+- **Strict Mode**: TypeScript strict mode must be enabled.
+- **Error Handling**: Address errors proactively. No empty catch blocks. Use graceful degradation for UI.
+- **Comments**: Comment complex algorithmic logic (especially in the AI/Vector sections).
+
+## 3. Best Practices
+
+- **Senior Dev Mindset**: Do not use "hacky" workarounds. If a library is fighting you, understand why or swap it, don't patch it poorly.
+- **Components**: Keep React components small and atomic.
+- **State Management**: Use Zustand for global client state.
+- **Styling**: Tailwind CSS + Framer Motion. Avoid raw CSS/SCSS modules unless necessary.
+
+## 4. Testing
+
+- **White Box**: Unit test logic (100% func coverage goal).
+- **Black Box**: Verify critical user flows (Scanning, Downloading).
+
+## 5. File Structure
+
+## 6. Image Generation
+
+- **Self-Sufficiency**: Generate images (icons, logos, UI mockups) using the `generate_image` tool when needed. Do not use placeholders.
+- **Style**: Adhere to the "Obsidian & Neon" design system.

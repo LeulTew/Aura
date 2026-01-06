@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+numpy
+## AI Dependencies (To be installed later/checked for compatibility)
+# insightface
+# opencv-python
+## Database
+# asyncpg
