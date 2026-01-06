@@ -190,30 +190,55 @@ export default function GalleryView({ matches, onBack }: GalleryViewProps) {
       return;
     }
 
-    // Multiple files - ZIP
     try {
+      // 1. Fetch all blobs first
+      const files = await Promise.all(toDownload.map(async (match) => {
+        const response = await fetch(getImageUrl(match.source_path));
+        const blob = await response.blob();
+        const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
+        // Create JS File object with correct MIME type
+        return new File([blob], filename, { type: blob.type });
+      }));
+
+      // 2. Try Native Share (Mobile - Save Image)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+        try {
+          await navigator.share({
+            files: files,
+            title: 'Aura Photos',
+            text: `Here are ${files.length} photos from Aura`
+          });
+          setSelectMode(false);
+          setSelected(new Set());
+          return;
+        } catch (shareErr: any) {
+          // Ignore abort errors (user cancelled share sheet)
+          if (shareErr.name !== 'AbortError') {
+            console.warn("Share failed, falling back to ZIP:", shareErr);
+          } else {
+             return; // User cancelled, don't try ZIP
+          }
+        }
+      }
+
+      // 3. Fallback: ZIP (Desktop / Unsupported Mobile)
       const JSZip = (await import("jszip")).default;
       const { saveAs } = (await import("file-saver"));
       const zip = new JSZip();
       
-      // Add files to zip
-      await Promise.all(toDownload.map(async (match) => {
-        const response = await fetch(getImageUrl(match.source_path));
-        const blob = await response.blob();
-        const filename = match.source_path.split("/").pop() || `photo-${match.id}.jpg`;
-        zip.file(filename, blob);
-      }));
+      files.forEach(file => {
+        zip.file(file.name, file);
+      });
 
-      // Generate and save
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `aura-photos-${new Date().toISOString().split('T')[0]}.zip`);
       
-      // Exit select mode after download
       setSelectMode(false);
       setSelected(new Set());
+
     } catch (err) {
-      console.error("Zip download failed:", err);
-      alert("Failed to create zip file");
+      console.error("Download failed:", err);
+      alert("Failed to download photos. Please try again.");
     }
   };
 
