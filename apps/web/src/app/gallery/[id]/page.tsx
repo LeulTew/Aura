@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import GalleryView, { SearchMatch } from "@/components/GalleryView";
+import GalleryView, { SearchMatch, GalleryViewHandle } from "@/components/GalleryView";
+
+interface EnrichedPhoto {
+  path: string;
+  photo_date: string;
+}
 
 interface BundleData {
   id: string;
   name: string;
-  photo_ids: string[]; // paths
+  photos: EnrichedPhoto[]; 
   created_at: string;
 }
 
@@ -17,6 +22,7 @@ export default function BundlePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [bundleName, setBundleName] = useState("");
+  const galleryRef = useRef<GalleryViewHandle>(null);
 
   useEffect(() => {
     if (!params.id) return;
@@ -28,12 +34,13 @@ export default function BundlePage() {
       })
       .then((data: BundleData) => {
         setBundleName(data.name);
-        // Convert paths to SearchMatch objects
-        const bundleMatches: SearchMatch[] = data.photo_ids.map((path, idx) => ({
+        
+        // Use enriched metadata if present, else fallback
+        const bundleMatches: SearchMatch[] = data.photos.map((photo, idx) => ({
           id: `bundle-${idx}`,
-          source_path: path,
+          source_path: photo.path,
           distance: 0,
-          photo_date: data.created_at || new Date().toISOString(), // Use bundle date to group them together
+          photo_date: photo.photo_date !== "Unknown" ? photo.photo_date : (data.created_at || new Date().toISOString()),
           created_at: data.created_at
         }));
         setMatches(bundleMatches);
@@ -62,23 +69,44 @@ export default function BundlePage() {
     );
   }
 
+  const handleDownload = () => {
+    if (galleryRef.current) {
+       galleryRef.current.downloadAll();
+    }
+  };
+
   return (
     <main className="bg-[var(--bg)] min-h-screen">
-      <div className="pt-20 px-4 md:px-8">
-        <div className="max-w-[1600px] mx-auto mb-8">
-           <h1 className="text-3xl font-light text-white tracking-wide">
+      <div className="pt-24 pb-12 px-4 md:px-8 text-center bg-gradient-to-b from-black/50 to-transparent">
+        <div className="max-w-[1600px] mx-auto">
+           <p className="text-[var(--accent)] font-mono text-[10px] uppercase tracking-[0.2em] mb-4">
+             Shared Stash
+           </p>
+           <h1 className="text-4xl md:text-6xl font-light text-white tracking-tight mb-8">
              {bundleName}
            </h1>
-           <p className="text-gray-500 font-mono text-xs uppercase mt-2">
-             Curated Collection • {matches.length} Photos
+           
+           {/* Primary Download CTA - Centered below title */}
+           <button
+             onClick={handleDownload}
+             className="px-10 py-4 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] text-white font-mono text-sm font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] rounded-full mb-6"
+           >
+             Download All {matches.length} Photos
+           </button>
+           
+           <p className="text-gray-500 font-mono text-[10px] uppercase tracking-wide opacity-50">
+             Direct Download • High Resolution • No Expiration
            </p>
         </div>
       </div>
       
+      {/* Gallery View - Navigation download buttons hidden here as they are replaced by the header button */}
       <GalleryView 
+        ref={galleryRef}
         matches={matches} 
         onBack={() => window.location.href = "/"}
         isBundle={true}
+        hideNavActions={true}
       />
     </main>
   );

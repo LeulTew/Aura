@@ -421,6 +421,7 @@ async def create_bundle(req: BundleRequest):
 @app.get("/api/bundles/{bundle_id}")
 async def get_bundle(bundle_id: str):
     import json
+    import database # Fix: access database module
     
     if not os.path.exists(BUNDLE_FILE):
          raise HTTPException(status_code=404, detail="Bundle not found")
@@ -432,7 +433,30 @@ async def get_bundle(bundle_id: str):
         if bundle_id not in bundles:
             raise HTTPException(status_code=404, detail="Bundle not found")
             
-        return bundles[bundle_id]
+        bundle = bundles[bundle_id]
+        
+        # Enrich with metadata from DB if possible
+        enriched_photos = []
+        try:
+            tbl = database.get_or_create_table()
+            for path in bundle.get("photo_ids", []):
+                # Search by path
+                df = tbl.search().where(f"source_path = '{path}'").limit(1).to_pandas()
+                if not df.empty:
+                    record = df.iloc[0]
+                    enriched_photos.append({
+                        "path": path,
+                        "photo_date": record.get("photo_date", "Unknown")
+                    })
+                else:
+                    enriched_photos.append({"path": path, "photo_date": "Unknown"})
+        except Exception as e:
+            logger.warning(f"Metadata enrichment failed: {e}")
+            # Fallback to just paths if DB fails
+            enriched_photos = [{"path": p, "photo_date": "Unknown"} for p in bundle.get("photo_ids", [])]
+            
+        bundle["photos"] = enriched_photos
+        return bundle
     except Exception as e:
         logger.error(f"Error reading bundle: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
