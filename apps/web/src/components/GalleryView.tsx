@@ -391,7 +391,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
                   </button>
                   <button
                     onClick={downloadAll}
-                    className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all"
+                    className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-[11px] font-bold uppercase tracking-wide hover:opacity-90 transition-all"
                   >
                     Download All
                   </button>
@@ -533,7 +533,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
           >
             <button
               onClick={closeViewer}
-              className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center text-white text-3xl font-light hover:text-[var(--accent)] transition-all z-[1010] bg-white/10 backdrop-blur-xl border border-white/20 rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] hover:bg-white/20 active:scale-95"
+              className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center text-white text-3xl font-light hover:text-[var(--accent)] transition-all z-[1010] bg-white/10 backdrop-blur-xl border border-white/20 rounded-full hover:bg-white/20 active:scale-95"
             >
               ×
             </button>
@@ -556,7 +556,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
               </p>
               <button
                 onClick={() => downloadImage(currentImage)}
-                className="px-6 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-sm font-bold uppercase tracking-wide hover:opacity-90 hover:shadow-[0_0_20_rgba(59,130,246,0.4)] transition-all rounded"
+                className="px-6 py-2.5 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] font-mono text-sm font-bold uppercase tracking-wide hover:opacity-90 transition-all rounded"
               >
                 Download
               </button>
@@ -598,7 +598,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
 
         {/* Floating Selection Bar */}
         {!hideNavActions && selectMode && selected.size > 0 && !viewerOpen && (
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl border border-white/10 rounded-full z-[100] animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-white font-mono text-xs uppercase tracking-[0.2em]">
               {selected.size} <span className="text-gray-500">Selected</span>
             </div>

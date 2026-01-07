@@ -89,7 +89,7 @@ export default function BundlePage() {
            {/* Primary Download CTA - Centered below title */}
            <button
              onClick={handleDownload}
-             className="px-10 py-4 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] text-white font-mono text-sm font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] rounded-full mb-6"
+             className="px-10 py-4 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] text-white font-mono text-sm font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all rounded-full mb-6"
            >
              Download All {matches.length} Photos
            </button>
