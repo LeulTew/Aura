@@ -210,10 +210,12 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
 
     // Download state & Helpers
     const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
+    const [downloadError, setDownloadError] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const resetDownloadState = useCallback(() => {
       setDownloadProgress(null);
+      setDownloadError(null);
       abortControllerRef.current = null;
       setSelectMode(isBundle); // Reset to bundle default if applicable
       setSelected(isBundle ? new Set(matches.map(m => m.id)) : new Set());
@@ -239,6 +241,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
 
       // Initialize progress
       setDownloadProgress({ current: 0, total: toDownload.length });
+      setDownloadError(null);
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
@@ -313,13 +316,14 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
         resetDownloadState();
 
       } catch (err: any) {
-        if (err.message === "Download cancelled") {
+        if (err.message === "Download cancelled" || err.name === "AbortError") {
           console.log("Download cancelled by user");
+          resetDownloadState();
         } else {
           console.error("Download failed:", err);
-          alert("Download failed. Please try again.");
+          setDownloadError(err.message || "An unexpected error occurred during download.");
+          // We DON'T call resetDownloadState() here so the UI can show the error
         }
-        resetDownloadState();
       }
     };
 
@@ -581,18 +585,54 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
         `}</style>
         {/* Download Progress Overlay */}
         {downloadProgress && (
-          <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
-            <div className="w-16 h-16 border-4 border-white/20 border-t-[var(--accent)] rounded-full animate-spin mb-6" />
-            <h3 className="text-xl font-light text-white mb-2">Preparing Photos...</h3>
-            <p className="font-mono text-sm text-gray-400 mb-8">
-              {downloadProgress.current} / {downloadProgress.total} ready
-            </p>
-            <button
-              onClick={cancelDownload}
-              className="px-8 py-3 border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-full font-mono text-xs uppercase tracking-widest transition-colors"
-            >
-              Cancel
-            </button>
+          <div className="fixed inset-0 z-[3000] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center animate-fade-in p-6 text-center">
+            {downloadError ? (
+              <>
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+                  <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-semibold text-white mb-4 uppercase tracking-[0.2em]">Core Interruption</h3>
+                <p className="text-gray-400 font-mono text-sm max-w-md mb-10 leading-relaxed">
+                  {downloadError}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+                  <button
+                    onClick={downloadAll}
+                    className="flex-1 py-4 bg-white text-black font-mono text-[11px] font-bold uppercase tracking-[0.2em] rounded active:scale-[0.98] transition-all"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="flex-1 py-4 bg-white/5 border border-white/10 text-white font-mono text-[11px] font-bold uppercase tracking-[0.2em] rounded hover:bg-white/10 active:scale-[0.98] transition-all"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <button
+                  onClick={resetDownloadState}
+                  className="mt-12 text-[var(--accent)] font-mono text-[10px] uppercase tracking-widest hover:underline"
+                >
+                  Dismiss Terminal
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 border-4 border-white/5 border-t-[var(--accent)] rounded-full animate-spin mb-8" />
+                <h3 className="text-xl font-light text-white mb-2 uppercase tracking-[0.2em]">Preparing Photos</h3>
+                <p className="font-mono text-xs text-gray-500 mb-10">
+                  {downloadProgress.current} / {downloadProgress.total} ready for deployment
+                </p>
+                <button
+                  onClick={cancelDownload}
+                  className="px-10 py-3 border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 rounded-full font-mono text-[10px] uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
           </div>
         )}
 
