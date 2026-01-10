@@ -1,0 +1,130 @@
+# Aura
+
+> **Intelligent Photo Retrieval** — Find your photos instantly with facial recognition.
+
+## Features
+
+- 📸 **Face Scanning** — Take a selfie to find all photos of yourself
+- 🧠 **AI-Powered** — GhostFaceNet embeddings with LanceDB vector search
+- ⚡ **Instant Results** — Sub-second matching with thumbnail pre-loading
+- 📅 **Smart Organization** — Auto-groups photos by date (EXIF/Time)
+- 📦 **Bundle Sharing** — Curate photos into bundles and share via QR code
+- 🎨 **Premium UI** — Dark mode, glassmorphism, and smooth shared-element transitions
+- 📱 **Mobile-First** — Flip camera support, native share/save to camera roll
+
+## Tech Stack
+
+| Layer    | Technology                        |
+| -------- | --------------------------------- |
+| Frontend | Next.js 15, React 19, TailwindCSS |
+| Backend  | FastAPI, Python 3.11, DeepFace    |
+| Database | LanceDB (vector embeddings)       |
+| AI Model | GhostFaceNet (512-dim embeddings) |
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- Python 3.11+
+- pnpm
+
+### Installation
+
+```bash
+# Clone
+git clone https://github.com/LeulTew/Aura.git
+cd Aura
+
+# Frontend
+cd apps/web && pnpm install
+
+# Backend
+cd ../core
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
+
+### Running Locally
+
+```bash
+# Terminal 1: Backend
+cd apps/core
+./venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2: Frontend
+cd apps/web
+pnpm dev -p 3000 -H 0.0.0.0
+```
+
+Open http://localhost:3000
+
+---
+
+## Mobile Access via Serveo (Important!)
+
+Since the camera requires HTTPS on mobile browsers, use [Serveo](https://serveo.net) to expose your local dev server:
+
+```bash
+# Terminal 3: Tunnel
+ssh -o StrictHostKeyChecking=no -R 80:localhost:3000 serveo.net
+```
+
+Serveo will output a URL like:
+
+```
+https://af256f8fc97c58f5-196-188-244-6.serveousercontent.com
+```
+
+### Add to Next.js Config
+
+Update `apps/web/next.config.ts`:
+
+```typescript
+const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    "http://localhost:3000",
+    "YOUR_SERVEO_URL_HERE.serveousercontent.com",
+  ],
+  // ... rewrites
+};
+```
+
+### Notes
+
+- The backend runs on `localhost:8000` and is proxied via Next.js rewrites
+- Serveo tunnels the frontend only; API calls go through the proxy
+- Works on mobile with camera access via HTTPS
+
+---
+
+## API Endpoints
+
+| Endpoint        | Method | Description                  |
+| --------------- | ------ | ---------------------------- |
+| `/api/scan`     | POST   | Scan directory for faces     |
+| `/api/search`   | POST   | Upload selfie → find matches |
+| `/api/image`    | GET    | Serve image by path          |
+| `/api/db/stats` | GET    | Database statistics          |
+| `/health`       | GET    | Health check                 |
+
+## Project Structure
+
+```
+Aura/
+├── apps/
+│   ├── core/          # FastAPI backend
+│   │   ├── main.py    # API endpoints
+│   │   ├── processor.py  # Face processing
+│   │   └── database.py   # LanceDB integration
+│   └── web/           # Next.js frontend
+│       └── src/
+│           ├── app/page.tsx  # Main app
+│           └── components/   # UI components
+└── project_plan.md    # Detailed roadmap
+```
+
+## License
+
+MIT
