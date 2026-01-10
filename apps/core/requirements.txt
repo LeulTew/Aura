@@ -1,9 +1,8 @@
 fastapi
 uvicorn
 numpy
-deepface
-opencv-python
-tf-keras
+insightface
+onnxruntime
 pillow
 python-multipart
 lancedb

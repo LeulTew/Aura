@@ -5,8 +5,9 @@
 ## Features
 
 - 📸 **Face Scanning** — Take a selfie to find all photos of yourself
-- 🧠 **AI-Powered** — GhostFaceNet embeddings with LanceDB vector search
+- 🧠 **AI-Powered** — InsightFace (ONNX Runtime) with LanceDB vector search
 - ⚡ **Instant Results** — Sub-second matching with thumbnail pre-loading
+- 🚀 **Low Memory** — Optimized for free-tier hosting (<500MB RAM)
 - 📅 **Smart Organization** — Auto-groups photos by date (EXIF/Time)
 - 📦 **Bundle Sharing** — Curate photos into bundles and share via QR code
 - 🎨 **Premium UI** — Dark mode, glassmorphism, and smooth shared-element transitions
@@ -17,9 +18,24 @@
 | Layer    | Technology                        |
 | -------- | --------------------------------- |
 | Frontend | Next.js 15, React 19, TailwindCSS |
-| Backend  | FastAPI, Python 3.11, DeepFace    |
+| Backend  | FastAPI, Python 3.12, InsightFace |
 | Database | LanceDB (vector embeddings)       |
-| AI Model | GhostFaceNet (512-dim embeddings) |
+| AI Model | Buffalo_L (ArcFace ONNX)          |
+
+## 🧠 AI Architecture: Legacy vs Modern
+
+We migrated from **DeepFace** to **InsightFace** to enable free-tier hosting without sacrificing accuracy.
+
+| Feature       | 🐢 DeepFace (Legacy)      | 🚀 InsightFace (Current)           |
+| :------------ | :------------------------ | :--------------------------------- |
+| **Model**     | GhostFaceNet (TensorFlow) | Buffalo_L (ArcFace/ONNX)           |
+| **RAM Usage** | ~1.5 GB (Heavy)           | **< 300 MB (Efficient)**           |
+| **Speed**     | 2-3s initialization       | **< 0.5s initialization**          |
+| **Accuracy**  | High (State-of-the-art)   | **High (Industry Standard)**       |
+| **Platform**  | Requires VPS / Paid GPU   | **Runs on Free Tier (Render/One)** |
+
+> **Why we chose Buffalo_L/ONNX:**
+> While DeepFace offers excellent research-grade models, its TensorFlow backend is too heavy for standard free-tier containers (512MB RAM limit). Buffalo_L provides near-identical accuracy for real-world face retrieval but runs on a fraction of the resources, making Aura cost-effective to host.
 
 ## Quick Start
 

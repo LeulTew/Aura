@@ -1,8 +1,10 @@
 import os
 import time
+import numpy as np
 from typing import List, Dict, Any
-from deepface import DeepFace
 import logging
+import cv2
+from insightface.app import FaceAnalysis
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,54 +13,52 @@ logger = logging.getLogger(__name__)
 class FaceProcessor:
     def __init__(self):
         """
-        Initialize the FaceProcessor with GhostFaceNet and YuNet.
-        We perform a dummy forward pass to warm up the model.
+        Initialize the FaceProcessor with InsightFace (ONNX Runtime).
+        Uses the default 'buffalo_l' model pack which includes detection and recognition.
         """
-        self.model_name = "GhostFaceNet"
-        self.detector_backend = "yunet"
-        logger.info(f"Initializing FaceProcessor with {self.model_name} and {self.detector_backend}...")
+        self.app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
+        logger.info("Initializing FaceProcessor (InsightFace/ONNX)...")
         
-        # Warmup
+        # Prepare the model (warmup/download)
+        # ctx_id=0 for GPU, -1 for CPU. default is usually CPU if no GPU.
         try:
-            # Create a dummy black image for warmup if needed, 
-            # but DeepFace usually loads lazy. We force build here.
-            DeepFace.build_model(self.model_name)
-            logger.info("Model loaded successfully.")
+            self.app.prepare(ctx_id=0, det_size=(640, 640))
+            logger.info("InsightFace model loaded successfully.")
         except Exception as e:
-            logger.error(f"Failed to load model: {e}")
+            logger.error(f"Failed to load InsightFace model: {e}")
             raise e
 
     def get_embedding(self, img_path: str) -> List[float]:
         """
-        Detects the largest face in the image and returns its 128D/512D embedding.
+        Detects the largest face in the image and returns its 512D embedding.
         Returns None if no face is found.
         """
         try:
             start = time.time()
-            embeddings = DeepFace.represent(
-                img_path=img_path,
-                model_name=self.model_name,
-                detector_backend=self.detector_backend,
-                enforce_detection=True,
-                align=True
-            )
             
-            if not embeddings:
+            # InsightFace reads via cv2/numpy
+            img = cv2.imread(img_path)
+            if img is None:
+                logger.warning(f"Could not read image: {img_path}")
+                return None
+
+            faces = self.app.get(img)
+            
+            if not faces:
                 return None
             
-            # Assuming we only want the most prominent face for now (index 0)
-            # In a group photo scenario, we would iterate, but for the 'Subject' search, usually one.
-            # DeepFace.represent returns a list of dicts.
+            # Sort by area (largest face first)
+            faces = sorted(faces, key=lambda x: (x.bbox[2]-x.bbox[0]) * (x.bbox[3]-x.bbox[1]), reverse=True)
             
-            embedding = embeddings[0]['embedding']
+            # Get the embedding of the largest face
+            # InsightFace returns normalized embeddings by default
+            embedding = faces[0].normed_embedding.tolist()
+            
             duration = time.time() - start
-            logger.info(f"Processed {os.path.basename(img_path)} in {duration:.2f}s")
+            logger.info(f"Processed {os.path.basename(img_path)} in {duration:.4f}s")
             
             return embedding
 
-        except ValueError:
-            logger.warning(f"No face detected in {img_path}")
-            return None
         except Exception as e:
             logger.error(f"Error processing {img_path}: {e}")
             return None
@@ -96,7 +96,7 @@ class FaceProcessor:
 
     def scan_directory(self, directory_path: str) -> List[Dict[str, Any]]:
         """
-        Scans a directory for images and returns a list of results.
+        Scans a directory for images and indexes ALL faces found in each image.
         """
         results = []
         valid_extensions = {".jpg", ".jpeg", ".png", ".webp"}
@@ -105,12 +105,59 @@ class FaceProcessor:
             for file in files:
                 if os.path.splitext(file)[1].lower() in valid_extensions:
                     full_path = os.path.join(root, file)
-                    emb = self.get_embedding(full_path)
-                    if emb:
-                        results.append({
-                            "path": full_path,
-                            "embedding": emb,
-                            "photo_date": self.get_photo_date(full_path)
-                        })
+                    try:
+                        # Direct read to get ALL faces
+                        img = cv2.imread(full_path)
+                        if img is None:
+                            continue
+                            
+                        faces = self.app.get(img)
+                        if not faces:
+                            continue
+                            
+                        # Store every face found
+                        photo_date = self.get_photo_date(full_path)
+                        for face in faces:
+                            results.append({
+                                "path": full_path,
+                                "embedding": face.normed_embedding.tolist(),
+                                "photo_date": photo_date
+                            })
+                            
+                    except Exception as e:
+                        logger.error(f"Error scanning {full_path}: {e}")
+                        continue
+                        
         return results
 
+# =============================================================================
+# LEGACY DEEPFACE IMPLEMENTATION (For Reference)
+# =============================================================================
+#
+# from deepface import DeepFace
+#
+# class LegacyFaceProcessor:
+#     def __init__(self):
+#         self.model_name = "GhostFaceNet"
+#         self.detector_backend = "yunet"
+#         logger.info(f"Initializing FaceProcessor with {self.model_name}...")
+#         try:
+#             DeepFace.build_model(self.model_name)
+#         except Exception as e:
+#             logger.error(f"Failed to load model: {e}")
+#             raise e
+#
+#     def get_embedding(self, img_path: str) -> List[float]:
+#         try:
+#             embeddings = DeepFace.represent(
+#                 img_path=img_path,
+#                 model_name=self.model_name,
+#                 detector_backend=self.detector_backend,
+#                 enforce_detection=True,
+#                 align=True
+#             )
+#             if not embeddings: return None
+#             return embeddings[0]["embedding"]
+#         except Exception as e:
+#             logger.error(f"Error: {e}")
+#             return None
