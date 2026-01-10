@@ -85,7 +85,7 @@ class DBStatsResponse(BaseModel):
 # Endpoints
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Aura Core API", "status": "running"}
+    return {"message": "Welcome to Aura Core API (Supabase Edition)", "status": "running"}
 
 @app.get("/health")
 async def health():
@@ -94,7 +94,7 @@ async def health():
 @app.get("/api/db/stats", response_model=DBStatsResponse)
 async def db_stats():
     """Get database statistics."""
-    from database import get_stats
+    from database_supabase import get_stats
     stats = get_stats()
     return DBStatsResponse(**stats)
 
@@ -141,7 +141,7 @@ async def embed_face(file: UploadFile = File(...)):
 @app.post("/api/scan", response_model=ScanDirectoryResponse)
 async def scan_directory(
     directory_path: str,
-    persist: bool = Query(default=True, description="Store results in LanceDB")
+    persist: bool = Query(default=True, description="Store results in Supabase")
 ):
     """
     Scan a directory for faces and return/store embeddings.
@@ -158,24 +158,20 @@ async def scan_directory(
         
         stored_count = 0
         if persist and results:
-            from database import add_faces
+            from database_supabase import store_embeddings
             
-            # Prepare records with image blobs
+            # Prepare records for Supabase
             db_records = []
             for r in results:
-                # Read the original image as bytes for blob storage
-                with open(r["path"], "rb") as f:
-                    image_bytes = f.read()
-                
                 db_records.append({
-                    "vector": r["embedding"],
-                    "image_blob": image_bytes,
-                    "source_path": r["path"],
-                    "photo_date": r.get("photo_date")
+                    "path": r["path"],
+                    "embedding": r["embedding"],
+                    "photo_date": r.get("photo_date"),
+                    "metadata": {"source": "scan"}
                 })
             
-            stored_count = add_faces(db_records)
-            logger.info(f"Stored {stored_count} face records in LanceDB")
+            stored_count = store_embeddings(db_records)
+            logger.info(f"Stored {stored_count} face records in Supabase")
         
         return ScanDirectoryResponse(
             success=True,
@@ -195,11 +191,10 @@ async def scan_directory(
 async def search_faces(
     file: UploadFile = File(...),
     limit: int = Query(default=100, ge=1, le=500, description="Max results to return"),
-    max_distance: float = Query(default=1.15, ge=0, description="Maximum distance threshold for matches")
+    min_similarity: float = Query(default=0.6, ge=0, le=1, description="Minimum similarity threshold (0-1)")
 ):
     """
     Upload a selfie to find matching faces in the database.
-    Only returns matches below the distance threshold.
     """
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
@@ -220,16 +215,26 @@ async def search_faces(
                 error="No face detected in the uploaded image"
             )
         
-        # Search database
-        from database import search_similar
-        all_matches = search_similar(query_embedding, limit=limit)
+        # Search Supabase
+        from database_supabase import search_similar
         
-        # Filter by distance threshold
-        filtered_matches = [m for m in all_matches if m["distance"] <= max_distance]
+        # We pass min_similarity directly as threshold
+        matches = search_similar(query_embedding, threshold=min_similarity, limit=limit)
+        
+        # Convert to response model
+        search_matches = []
+        for m in matches:
+             search_matches.append(SearchMatch(
+                 id=m["id"],
+                 source_path=m["source_path"],
+                 distance=m["distance"],
+                 photo_date=m.get("photo_date", "Unknown"),
+                 created_at=m.get("created_at", "Unknown") # Supabase might not return created_at in search unless updated
+             ))
         
         return SearchResponse(
             success=True,
-            matches=[SearchMatch(**m) for m in filtered_matches]
+            matches=search_matches
         )
     
     except Exception as e:
@@ -265,42 +270,26 @@ async def get_image(
     
     # If no resizing needed, return file directly
     if not w and not h:
-        ext = os.path.splitext(path)[1].lower()
-        content_types = {
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".png": "image/png",
-            ".webp": "image/webp",
-            ".gif": "image/gif"
-        }
-        content_type = content_types.get(ext, "application/octet-stream")
-        return FileResponse(path, media_type=content_type)
+        return FileResponse(path)
     
     # Resize logic
     try:
         with Image.open(path) as img:
-            # Convert to RGB if RGBA (to save as JPEG)
             if img.mode in ('RGBA', 'P'):
                 img = img.convert('RGB')
             
-            # Calculate new size maintaining aspect ratio
             original_w, original_h = img.size
-            
             if w and not h:
-                # Resize by width
                 ratio = w / original_w
                 new_size = (w, int(original_h * ratio))
             elif h and not w:
-                # Resize by height
                 ratio = h / original_h
                 new_size = (int(original_w * ratio), h)
             else:
-                # Resize by bot
                 new_size = (w, h)
                 
             img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-            # Save to buffer
             buf = io.BytesIO()
             img.save(buf, format="JPEG", quality=85)
             buf.seek(0)
@@ -309,7 +298,6 @@ async def get_image(
             
     except Exception as e:
         logger.error(f"Error resizing image: {e}")
-        # Fallback to original file if resizing fails
         return FileResponse(path)
 
 # Admin & QR Endpoints
@@ -326,7 +314,7 @@ class FolderItem(BaseModel):
     name: str
     path: str
     type: str  # "dir" or "file"
-    count: Optional[int] = None # For dirs, number of image files
+    count: Optional[int] = None
 
 class FolderResponse(BaseModel):
     path: str
@@ -349,10 +337,10 @@ BUNDLE_FILE = "data/bundles.json"
 async def admin_login(req: LoginRequest):
     if req.pin == ADMIN_PIN:
         import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         token = jwt.encode({
             "role": "admin",
-            "exp": datetime.utcnow() + timedelta(days=1)
+            "exp": datetime.now(timezone.utc) + timedelta(days=1)
         }, JWT_SECRET, algorithm="HS256")
         return LoginResponse(success=True, token=token)
     return LoginResponse(success=False, error="Invalid PIN")
@@ -370,14 +358,11 @@ async def list_folders(path: str = Query(default="/")):
                 if entry.name.startswith("."): continue
                 
                 if entry.is_dir():
-                    # Count images in subdir (shallow)
                     items.append(FolderItem(name=entry.name, path=entry.path, type="dir"))
                 elif entry.is_file() and os.path.splitext(entry.name)[1].lower() in valid_exts:
                     items.append(FolderItem(name=entry.name, path=entry.path, type="file"))
         
-        # Sort: Dirs first, then files
         items.sort(key=lambda x: (x.type != "dir", x.name.lower()))
-        
         parent = os.path.dirname(path) if path != "/" else None
         return FolderResponse(path=path, parent=parent, items=items)
     except PermissionError:
@@ -398,7 +383,6 @@ async def create_bundle(req: BundleRequest):
             "created_at": str(datetime.now())
         }
         
-        # Load existing bundles
         os.makedirs(os.path.dirname(BUNDLE_FILE), exist_ok=True)
         bundles = {}
         if os.path.exists(BUNDLE_FILE):
@@ -421,7 +405,6 @@ async def create_bundle(req: BundleRequest):
 @app.get("/api/bundles/{bundle_id}")
 async def get_bundle(bundle_id: str):
     import json
-    import database # Fix: access database module
     
     if not os.path.exists(BUNDLE_FILE):
          raise HTTPException(status_code=404, detail="Bundle not found")
@@ -435,27 +418,11 @@ async def get_bundle(bundle_id: str):
             
         bundle = bundles[bundle_id]
         
-        # Enrich with metadata from DB if possible
-        enriched_photos = []
-        try:
-            tbl = database.get_or_create_table()
-            for path in bundle.get("photo_ids", []):
-                # Search by path
-                df = tbl.search().where(f"source_path = '{path}'").limit(1).to_pandas()
-                if not df.empty:
-                    record = df.iloc[0]
-                    enriched_photos.append({
-                        "path": path,
-                        "photo_date": record.get("photo_date", "Unknown")
-                    })
-                else:
-                    enriched_photos.append({"path": path, "photo_date": "Unknown"})
-        except Exception as e:
-            logger.warning(f"Metadata enrichment failed: {e}")
-            # Fallback to just paths if DB fails
-            enriched_photos = [{"path": p, "photo_date": "Unknown"} for p in bundle.get("photo_ids", [])]
-            
+        # Return photo paths directly for now (client will request image blobs)
+        # TODO: Enhance with database metadata if needed
+        enriched_photos = [{"path": p, "photo_date": "Unknown"} for p in bundle.get("photo_ids", [])]
         bundle["photos"] = enriched_photos
+        
         return bundle
     except Exception as e:
         logger.error(f"Error reading bundle: {e}")
@@ -472,3 +439,48 @@ async def generate_qr(url: str):
     img.save(buf, format="PNG")
     buf.seek(0)
     return Response(content=buf.getvalue(), media_type="image/png")
+
+# Authentication
+@app.post("/api/auth/face-login")
+async def face_login(file: UploadFile = File(...)):
+    """
+    Login by face. Returns JWT if face matches an authorized user.
+    """
+    # Verify file is image
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    # Save to temp
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        fp = get_processor()
+        embedding = fp.get_embedding(tmp_path)
+        
+        if not embedding:
+             return {"success": False, "error": "No face detected"}
+
+        from database_supabase import search_similar
+        # Strict threshold for login
+        matches = search_similar(embedding, threshold=0.75, limit=1)
+        
+        if matches:
+            # Match found! Issue token.
+            import jwt
+            from datetime import datetime, timedelta, timezone
+            
+            token = jwt.encode({
+                "role": "user",
+                "face_id": matches[0]["id"],
+                "exp": datetime.now(timezone.utc) + timedelta(hours=24)
+            }, JWT_SECRET, algorithm="HS256")
+            
+            return {"success": True, "token": token, "match": matches[0]}
+        
+        return {"success": False, "error": "Face not recognized"}
+
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)

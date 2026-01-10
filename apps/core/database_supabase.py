@@ -34,46 +34,29 @@ def get_client():
     return _client
 
 
-def store_embedding(
-    source_path: str,
-    embedding: List[float],
-    photo_date: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
-) -> Optional[str]:
+def store_embeddings(records: List[Dict[str, Any]]) -> int:
     """
-    Store a face embedding in Supabase.
+    Store multiple face embeddings in Supabase.
     
     Args:
-        source_path: Path to the original image
-        embedding: 512D face embedding vector
-        photo_date: YYYY-MM-DD format date string
-        metadata: Additional metadata (EXIF, etc.)
-    
+        records: List of dicts with keys: path, embedding, photo_date, metadata
+        
     Returns:
-        UUID of the inserted record, or None on failure
+        Number of records stored
     """
     try:
         client = get_client()
         
-        data = {
-            "path": source_path,
-            "embedding": embedding,
-            "photo_date": photo_date,
-            "metadata": metadata or {}
-        }
+        # Supabase insert supports list of dicts
+        result = client.table("photos").insert(records).execute()
         
-        result = client.table("photos").insert(data).execute()
-        
-        if result.data:
-            record_id = result.data[0]["id"]
-            logger.info(f"Stored embedding for {source_path} with id {record_id}")
-            return record_id
-        
-        return None
+        count = len(result.data) if result.data else 0
+        logger.info(f"Stored {count} embeddings in Supabase")
+        return count
         
     except Exception as e:
-        logger.error(f"Failed to store embedding: {e}")
-        return None
+        logger.error(f"Failed to store embeddings: {e}")
+        return 0
 
 
 def search_similar(
@@ -86,11 +69,11 @@ def search_similar(
     
     Args:
         query_embedding: 512D face embedding to match
-        threshold: Minimum similarity score (0-1)
+        threshold: Minimum similarity score (0-1). Note: Logic is flipped vs LanceDB distance.
         limit: Maximum results to return
     
     Returns:
-        List of matches with id, path, metadata, similarity
+        List of matches with keys: id, source_path, distance, photo_date, similarity
     """
     try:
         client = get_client()
@@ -105,8 +88,22 @@ def search_similar(
         ).execute()
         
         matches = result.data or []
-        logger.info(f"Found {len(matches)} matches above threshold {threshold}")
-        return matches
+        
+        # Normalize keys to match old interface where possible
+        normalized = []
+        for m in matches:
+            sim = m.get("similarity", 0)
+            normalized.append({
+                "id": m["id"],
+                "source_path": m["path"],
+                "photo_date": m.get("photo_date"),
+                "similarity": sim,
+                "distance": 1.0 - sim, # Approx conversion for backward compat
+                "metadata": m.get("metadata")
+            })
+            
+        logger.info(f"Found {len(normalized)} matches above similarity {threshold}")
+        return normalized
         
     except Exception as e:
         logger.error(f"Search failed: {e}")

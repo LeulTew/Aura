@@ -14,9 +14,70 @@ import tempfile
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Mock database_supabase before importing main
+mock_db_supa = MagicMock()
+mock_db_supa.get_stats.return_value = {"total_faces": 42, "table_exists": True}
+mock_db_supa.store_embeddings.return_value = 5
+mock_db_supa.search_similar.return_value = [
+    {"id": "test-id", "path": "test.jpg", "distance": 0.1, "similarity": 0.9, "photo_date": "2023-01-01"}
+]
+sys.modules["database_supabase"] = mock_db_supa
+
 from main import app
 
 client = TestClient(app)
+
+class TestAuthEndpoint:
+    """Tests for the /api/auth/face-login endpoint."""
+    
+    def test_face_login_success(self):
+        """Face login should succeed with valid face match."""
+        # Mock processor to return embedding
+        with patch("main.get_processor") as mock_get_proc:
+            mock_proc_instance = MagicMock()
+            mock_proc_instance.get_embedding.return_value = [0.1] * 512
+            mock_get_proc.return_value = mock_proc_instance
+            
+            # Mock DB search to return a match
+            mock_db_supa.search_similar.return_value = [
+                {"id": "user-face-id", "path": "user.jpg", "distance": 0.2, "similarity": 0.8}
+            ]
+
+            # Create dummy image
+            with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
+                tmp.write(b"fake image data")
+                tmp.seek(0)
+                
+                response = client.post(
+                    "/api/auth/face-login",
+                    files={"file": ("selfie.jpg", tmp, "image/jpeg")}
+                )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "token" in data
+        assert data["match"]["id"] == "user-face-id"
+
+    def test_face_login_no_face(self):
+        """Face login should fail if no face detected."""
+        with patch("main.get_processor") as mock_get_proc:
+            mock_proc_instance = MagicMock()
+            mock_proc_instance.get_embedding.return_value = None
+            mock_get_proc.return_value = mock_proc_instance
+
+            with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
+                tmp.write(b"fake image data")
+                tmp.seek(0)
+                response = client.post(
+                    "/api/auth/face-login",
+                    files={"file": ("selfie.jpg", tmp, "image/jpeg")}
+                )
+        
+        data = response.json()
+        assert data["success"] is False
+        assert data["error"] == "No face detected"
+
 
 
 class TestHealthEndpoints:
