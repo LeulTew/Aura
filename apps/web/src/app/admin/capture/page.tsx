@@ -14,8 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const CameraConnect = dynamic(() => import('@/components/CameraConnect'), { ssr: false });
-const PhotoGallery = dynamic(() => import('@/components/PhotoGallery'), { ssr: false });
+const CameraConnect = dynamic(() => import('../../../components/CameraConnect'), { ssr: false });
+const PhotoGallery = dynamic(() => import('../../../components/PhotoGallery'), { ssr: false });
 
 export default function CapturePage() {
   const [eventUrl, setEventUrl] = useState('');

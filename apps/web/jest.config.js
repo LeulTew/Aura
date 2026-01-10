@@ -19,6 +19,13 @@ const customJestConfig = {
     '!src/**/*.d.ts',
     '!src/**/layout.tsx',
     '!**/node_modules/**',
+    '!src/components/ui/**',
+    '!src/lib/**',
+    '!src/app/layout.tsx',
+    '!src/app/head.tsx',
+  ],
+  transformIgnorePatterns: [
+    '/node_modules/(?!yet-another-react-lightbox|dexie|lucide-react|react-photo-album)'
   ],
 }
 

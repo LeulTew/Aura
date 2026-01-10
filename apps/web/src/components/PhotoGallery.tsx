@@ -2,6 +2,7 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
+import type { PhotoRecord } from '@/lib/db';
 import { Card } from '@/components/ui/card';
 import { Check, Clock, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -32,21 +33,24 @@ export default function PhotoGallery() {
   );
 }
 
-function PhotoCard({ photo }: { photo: any }) {
+function PhotoCard({ photo }: { photo: PhotoRecord }) {
   const [src, setSrc] = useState<string>('');
 
   useEffect(() => {
+    let url = '';
     if (photo.thumbnailBlob) {
-      const url = URL.createObjectURL(photo.thumbnailBlob);
+      url = URL.createObjectURL(photo.thumbnailBlob);
       setSrc(url);
-      return () => URL.revokeObjectURL(url);
     }
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
   }, [photo.thumbnailBlob]);
 
   return (
     <Card className="aspect-[3/4] overflow-hidden bg-[#111] border-white/5 rounded-[2rem] relative group border shadow-2xl transition-transform active:scale-95">
       {src ? (
-        <img src={src} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <img src={src} alt={`Photo ${photo.id}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
       ) : (
         <div className="w-full h-full bg-white/2 flex items-center justify-center">
             <Clock className="w-5 h-5 text-white/5" />
