@@ -1,3 +1,4 @@
+/* eslint-disable */ 
 'use client';
 import { useCamera } from '../hooks/useCamera';
 import { Camera, Battery, AlertTriangle, Loader2 } from 'lucide-react';

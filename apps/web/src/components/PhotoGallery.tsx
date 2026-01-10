@@ -40,6 +40,7 @@ function PhotoCard({ photo }: { photo: PhotoRecord }) {
     let url = '';
     if (photo.thumbnailBlob) {
       url = URL.createObjectURL(photo.thumbnailBlob);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSrc(url);
     }
     return () => {

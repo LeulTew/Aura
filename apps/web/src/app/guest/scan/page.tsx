@@ -80,9 +80,10 @@ export default function FaceScanPage() {
         router.push(`/gallery/${user_id}`);
       }, 2000);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "An unexpected error occurred.");
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setError(msg);
       setStep('idle');
     }
   }, [router]);

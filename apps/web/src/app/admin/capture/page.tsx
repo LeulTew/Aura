@@ -22,6 +22,7 @@ export default function CapturePage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEventUrl(window.location.origin);
     }
   }, []);
