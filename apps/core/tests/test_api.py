@@ -284,5 +284,40 @@ class TestQREndpoint:
         assert response.status_code == 422
 
 
+class TestIndexPhotoEndpoint:
+    """Tests for the /api/index-photo endpoint."""
+    
+    @patch("main.get_processor")
+    @patch("database_supabase.store_embedding")
+    def test_index_photo_success(self, mock_store, mock_get_processor):
+        # Mock processor
+        mock_processor = MagicMock()
+        mock_processor.get_embedding_from_image.return_value = [0.1] * 512
+        mock_get_processor.return_value = mock_processor
+        
+        # Mock store
+        mock_store.return_value = "new_record_id"
+        
+        # Create dummy image
+        import numpy as np
+        import cv2
+        img = np.zeros((100, 100, 3), dtype=np.uint8)
+        _, img_encoded = cv2.imencode('.jpg', img)
+        
+        response = client.post(
+            "/api/index-photo",
+            files={"file": ("thumb.jpg", img_encoded.tobytes(), "image/jpeg")},
+            data={"path": "photos/test.jpg", "metadata": "{}"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "indexed"
+        assert data["id"] == "new_record_id"
+        
+        # Verify calls
+        mock_processor.get_embedding_from_image.assert_called_once()
+        mock_store.assert_called_once()
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

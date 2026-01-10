@@ -28,6 +28,39 @@ class FaceProcessor:
             logger.error(f"Failed to load InsightFace model: {e}")
             raise e
 
+    def get_embedding_from_image(self, img: np.ndarray) -> List[float]:
+        """
+        Get embedding from a loaded numpy array (BGR).
+        """
+        try:
+            start = time.time()
+            
+            # Additional safety check for dimensions (if not checked before)
+            # Resize loop logic could be here, but usually caller handles optimization if passing raw buffer
+            # Or we can reuse resize strict here
+            MAX_DIM = 1280
+            h, w = img.shape[:2]
+            if max(h, w) > MAX_DIM:
+                scale = MAX_DIM / max(h, w)
+                img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+
+            faces = self.app.get(img)
+            
+            if not faces:
+                logging.debug("No faces found in image buffer")
+                return None
+            
+            # Sort by area (largest face first)
+            faces = sorted(faces, key=lambda x: (x.bbox[2]-x.bbox[0]) * (x.bbox[3]-x.bbox[1]), reverse=True)
+            
+            # Get the embedding of the largest face
+            embedding = faces[0].normed_embedding.tolist()
+            return embedding
+
+        except Exception as e:
+            logger.error(f"Error processing image buffer: {e}")
+            return None
+
     def get_embedding(self, img_path: str) -> List[float]:
         """
         Detects the largest face in the image and returns its 512D embedding.
@@ -42,25 +75,7 @@ class FaceProcessor:
                 logger.warning(f"Could not read image: {img_path}")
                 return None
 
-            # Resize large images to reduce RAM usage and speed up processing
-            MAX_DIM = 1280
-            h, w = img.shape[:2]
-            if max(h, w) > MAX_DIM:
-                scale = MAX_DIM / max(h, w)
-                img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-                logger.debug(f"Resized {img_path} from {w}x{h} to {img.shape[1]}x{img.shape[0]}")
-
-            faces = self.app.get(img)
-            
-            if not faces:
-                return None
-            
-            # Sort by area (largest face first)
-            faces = sorted(faces, key=lambda x: (x.bbox[2]-x.bbox[0]) * (x.bbox[3]-x.bbox[1]), reverse=True)
-            
-            # Get the embedding of the largest face
-            # InsightFace returns normalized embeddings by default
-            embedding = faces[0].normed_embedding.tolist()
+            embedding = self.get_embedding_from_image(img)
             
             duration = time.time() - start
             logger.info(f"Processed {os.path.basename(img_path)} in {duration:.4f}s")

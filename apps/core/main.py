@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import tempfile
@@ -137,6 +137,79 @@ async def embed_face(file: UploadFile = File(...)):
         # Cleanup temp file
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+@app.post("/api/index-photo")
+async def index_photo(
+    file: UploadFile = File(...),
+    path: str = Form(...),
+    metadata: str = Form("{}") # JSON string
+):
+    """
+    Index a photo that was uploaded to Supabase Storage by the client.
+    The client sends a Thumbnail (small file) + the Storage Path of the Full Res.
+    """
+    import json
+    import time
+    import numpy as np
+    import cv2
+    from datetime import datetime
+    
+    try:
+        meta_dict = json.loads(metadata)
+    except:
+        meta_dict = {}
+
+    start = time.time()
+    
+    # 1. Read the thumbnail directly from memory
+    contents = await file.read()
+    
+    try:
+        # 2. Decode image for embedding (OpenCV)
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise HTTPException(status_code=400, detail="Invalid image file")
+
+        # 3. Get Embedding (FaceProcessor)
+        fp = get_processor()
+        embedding = fp.get_embedding_from_image(img)
+        
+        if embedding:
+            # 4. Store in DB
+            # We store the 'path' provided by client (which points to Full Res in Supabase)
+            # Use 'created_at' from metadata or default to now
+            photo_date = meta_dict.get("created_at") or datetime.now().isoformat()
+            
+            # We need to use store_embedding from database_supabase
+            from database_supabase import store_embedding
+            
+            # Ensure metadata includes width/height if not present?
+            # Client usually sends it.
+            
+            record_id = store_embedding(
+                source_path=path, # Points to Full Res location
+                embedding=embedding,
+                photo_date=photo_date,
+                metadata=meta_dict
+            )
+            
+            duration = time.time() - start
+            return {
+                "status": "indexed",
+                "id": record_id,
+                "duration": duration,
+                "faces_found": 1
+            }
+        else:
+            # No face detected
+            return {"status": "skipped", "reason": "no_face_detected"}
+            
+    except Exception as e:
+        logger.error(f"Error indexing photo: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/scan", response_model=ScanDirectoryResponse)
 async def scan_directory(
