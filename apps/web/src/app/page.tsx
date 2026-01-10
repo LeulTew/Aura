@@ -102,7 +102,7 @@ export default function Home() {
     return (
       <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[var(--bg)] text-white">
         <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="font-mono text-xs text-gray-400 tracking-widest uppercase">Restoring Aura...</p>
+        <p className="font-mono text-xs text-gray-400 tracking-widest uppercase">Calibrating Optics...</p>
       </main>
     );
   }
@@ -131,8 +131,8 @@ export default function Home() {
       {/* Hero Image Background */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 z-0">
         <img 
-          src="/aura-hero.png" 
-          alt="Aura Neural Mesh" 
+          src="/photography_hero_abstract_optics_1768033803518.png" 
+          alt="Aperture System" 
           className="w-[800px] h-auto max-w-[150%] animate-pulse-slow"
         />
       </div>
@@ -153,7 +153,7 @@ export default function Home() {
         <h1 className="text-5xl md:text-6xl font-extralight tracking-tight mb-16 animate-reveal">
           Your Photos,{" "}
           <span className="block text-[var(--accent)] font-normal">
-            Instantly
+            Through the Lens
           </span>
         </h1>
 

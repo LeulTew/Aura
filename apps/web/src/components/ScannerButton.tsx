@@ -50,11 +50,16 @@ export default function ScannerButton({ onClick }: ScannerButtonProps) {
           {/* Scanning line */}
           <div className="scanner-line animate-scan" />
           
-          {/* Pulsing icon */}
+          {/* Aperture icon */}
           <div 
             ref={iconRef}
-            className="scanner-icon animate-core-pulse transition-all duration-300"
-          />
+            className="scanner-icon animate-core-pulse transition-all duration-300 flex items-center justify-center p-2"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full text-white">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 2l4 7-6 1h6l-4 7-2-8h6" strokeLinecap="round" />
+            </svg>
+          </div>
         </div>
       </div>
     </div>

@@ -43,9 +43,18 @@ export default function VoidBackground() {
       {/* Ambient glow */}
       <div ref={auraRef} className="aura-bg animate-pulse-void" />
 
-      {/* Crystal shards */}
-      <div ref={shard1Ref} className="shard shard-1 transition-transform duration-500" />
-      <div ref={shard2Ref} className="shard shard-2 transition-transform duration-500" />
+      {/* Glass elements */}
+      <div ref={shard1Ref} className="shard shard-glass transition-transform duration-500" style={{ transform: 'rotate(15deg)', opacity: 0.1 }} />
+      <div ref={shard2Ref} className="shard shard-glass transition-transform duration-500" style={{ transform: 'rotate(-10deg)', opacity: 0.05, top: '20%', left: '70%', width: '30vw', height: '60vh' }} />
+
+      {/* Cinematic lens flare */}
+      <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-screen z-0">
+        <img 
+           src="/lens_flare_overlay_premium_1768033818263.png" 
+           alt="" 
+           className="w-full h-full object-cover"
+        />
+      </div>
     </>
   );
 }

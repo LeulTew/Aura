@@ -36,7 +36,7 @@ export default function StatusFooter() {
         <span className="text-[var(--accent)]">Status</span>
         <span>
           {status === "checking" && "Connecting..."}
-          {status === "online" && "Ready to Scan"}
+          {status === "online" && "Sensors Calibrated"}
           {status === "offline" && "Offline"}
         </span>
       </div>
@@ -48,7 +48,7 @@ export default function StatusFooter() {
       
       <div className="flex flex-col gap-2 items-center">
         <span className="text-[var(--accent)]">Engine</span>
-        <span>GhostFaceNet v1</span>
+        <span>Precision Core v1</span>
       </div>
     </footer>
   );
