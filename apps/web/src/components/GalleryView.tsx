@@ -185,9 +185,10 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
     const handleMouseUp = () => { isDragging.current = false; };
 
     useEffect(() => {
-      if (viewerOpen && viewerRef.current) {
-        viewerRef.current.addEventListener("wheel", handleWheel, { passive: false });
-        return () => viewerRef.current?.removeEventListener("wheel", handleWheel);
+      const viewer = viewerRef.current;
+      if (viewerOpen && viewer) {
+        viewer.addEventListener("wheel", handleWheel, { passive: false });
+        return () => viewer.removeEventListener("wheel", handleWheel);
       }
     }, [viewerOpen, handleWheel]);
 
@@ -247,7 +248,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
 
       try {
         // 1. Fetch all blobs concurrently (Faster, preserves User Gesture for iOS Share)
-        const fetchPromises = toDownload.map(async (match, idx) => {
+        const fetchPromises = toDownload.map(async (match) => {
           if (signal.aborted) throw new Error("Download cancelled");
           
           let attempts = 0;
@@ -257,8 +258,8 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                const blob = await response.blob();
                return { blob, match };
-             } catch (err: any) {
-               if (signal.aborted || err.name === 'AbortError') throw err;
+             } catch (err: unknown) {
+               if (signal.aborted || (err instanceof Error && err.name === 'AbortError')) throw err;
                attempts++;
                if (attempts === 3) throw err;
                await new Promise(r => setTimeout(r, 500)); 
@@ -287,8 +288,8 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
             });
             resetDownloadState();
             return;
-          } catch (shareErr: any) {
-            if (shareErr.name !== 'AbortError') {
+          } catch (shareErr: unknown) {
+            if (!(shareErr instanceof Error && shareErr.name === 'AbortError')) {
               console.warn("Share failed, falling back to ZIP:", shareErr);
             } else {
                resetDownloadState();
@@ -315,13 +316,15 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
         
         resetDownloadState();
 
-      } catch (err: any) {
-        if (err.message === "Download cancelled" || err.name === "AbortError") {
+      } catch (err: unknown) {
+        const errMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+        const errName = err instanceof Error ? err.name : "";
+        if (errMessage === "Download cancelled" || errName === "AbortError") {
           console.log("Download cancelled by user");
           resetDownloadState();
         } else {
           console.error("Download failed:", err);
-          setDownloadError(err.message || "An unexpected error occurred during download.");
+          setDownloadError(errMessage);
           // We DON'T call resetDownloadState() here so the UI can show the error
         }
       }
@@ -441,7 +444,7 @@ const GalleryView = forwardRef<GalleryViewHandle, GalleryViewProps>(
 
         {/* Date-Grouped Gallery */}
         <main className={`px-2 md:px-10 pb-10 max-w-[1800px] mx-auto transition-opacity duration-300 ${viewerOpen ? 'opacity-0 pointer-events-none' : ''}`}>
-          {groupedMatches.map((group, groupIndex) => (
+          {groupedMatches.map((group) => (
             <div key={group.date} className="mb-8">
               {/* Date Separator */}
               <div className="flex items-center gap-4 mb-4 px-2">
