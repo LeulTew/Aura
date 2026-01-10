@@ -115,6 +115,41 @@ const nextConfig: NextConfig = {
 
 ---
 
+## ✅ Testing & Reliability
+
+We believe in shipping code that works. Aura features a comprehensive test suite covering both the polished UI and the powerful AI backend, aiming for >90% code coverage.
+
+### Running the Suite
+
+**Frontend (Web)**
+We use **Jest** and **React Testing Library** to verify every interaction, from the innovative "hold-to-scan" button to the complex gallery selection logic.
+
+```bash
+cd apps/web
+npm test              # Run all tests
+npm run test:watch    # Interactive dev mode
+npm run test:coverage # Generate detailed coverage report
+```
+
+**Backend (Core)**
+Our Python tests rely on **pytest** to ensure the facial recognition pipeline and vector database are rock-solid without needing a GPU.
+
+```bash
+cd apps/core
+source venv/bin/activate
+pytest                # Run all tests
+pytest -v             # Verbose output with pass/fail
+pytest --cov          # Check coverage percentage
+```
+
+### Philosophy
+
+- **Mock Responsibly** — We simulate the webcam, file system, and neural network models during testing. This keeps our tests blazingly fast (seconds, not minutes) and determinstic.
+- **Critical Paths First** — We prioritize testing user-critical flows like "scanning a face" and "downloading a bundle" to ensure the core experience never breaks.
+- **Component Isolation** — Each UI component (like the `VoidBackground` or `CameraView`) is tested in isolation to catch visual logic bugs early.
+
+---
+
 ## API Endpoints
 
 | Endpoint        | Method | Description                  |
