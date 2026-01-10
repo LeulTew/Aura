@@ -6,3 +6,5 @@ onnxruntime
 pillow
 python-multipart
 lancedb
+supabase
+pydantic-settings

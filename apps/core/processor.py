@@ -42,6 +42,14 @@ class FaceProcessor:
                 logger.warning(f"Could not read image: {img_path}")
                 return None
 
+            # Resize large images to reduce RAM usage and speed up processing
+            MAX_DIM = 1280
+            h, w = img.shape[:2]
+            if max(h, w) > MAX_DIM:
+                scale = MAX_DIM / max(h, w)
+                img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+                logger.debug(f"Resized {img_path} from {w}x{h} to {img.shape[1]}x{img.shape[0]}")
+
             faces = self.app.get(img)
             
             if not faces:
