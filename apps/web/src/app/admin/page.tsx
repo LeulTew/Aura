@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 interface FolderItem {
   name: string;
@@ -90,7 +89,7 @@ export default function AdminPage() {
       });
       const data = await res.json();
       setCreatedBundle(data);
-    } catch (err) {
+    } catch {
       setError("Failed to create bundle");
     } finally {
       setIsCreating(false);
@@ -270,7 +269,7 @@ export default function AdminPage() {
                   </>
                 ) : (
                   <>
-                    <img src={getImageUrl(item.path)} className="w-5 h-5 object-cover rounded shadow-inner bg-gray-900 border border-white/5" />
+                    <img src={getImageUrl(item.path)} alt={item.name} className="w-5 h-5 object-cover rounded shadow-inner bg-gray-900 border border-white/5" />
                     <span className={`text-[13px] truncate ${selectedPhotos.has(item.path) ? "text-[var(--accent)]" : "text-gray-500"}`}>{item.name}</span>
                   </>
                 )}
@@ -319,6 +318,7 @@ export default function AdminPage() {
              <div className="w-24 h-24 bg-white p-2 rounded-xl">
                 <img 
                   src={`/api/qr?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : "")}`}
+                  alt="QR Code for public gallery"
                   className="w-full h-full object-contain"
                 />
              </div>
@@ -336,7 +336,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2 min-h-[40px]">
                 {Array.from(selectedPhotos).slice(0, 30).map(path => (
                   <div key={path} className="aspect-square bg-gray-900 rounded-lg overflow-hidden border border-white/5 relative group">
-                    <img src={getImageUrl(path)} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" />
+                    <img src={getImageUrl(path)} alt="Selected photo thumbnail" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" />
                     <button 
                       onClick={() => toggleSelect(path)}
                       className="absolute inset-0 bg-red-500/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity"
@@ -388,6 +388,7 @@ export default function AdminPage() {
                 {createdBundle && (
                   <img 
                     src={`/api/qr?url=${encodeURIComponent(window.location.origin + createdBundle.url)}`}
+                    alt="QR Code for bundle"
                     className="w-full h-full"
                   />
                 )}
