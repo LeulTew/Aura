@@ -130,3 +130,34 @@ class FaceProcessor:
                         
         return results
 
+# =============================================================================
+# LEGACY DEEPFACE IMPLEMENTATION (For Reference)
+# =============================================================================
+#
+# from deepface import DeepFace
+#
+# class LegacyFaceProcessor:
+#     def __init__(self):
+#         self.model_name = "GhostFaceNet"
+#         self.detector_backend = "yunet"
+#         logger.info(f"Initializing FaceProcessor with {self.model_name}...")
+#         try:
+#             DeepFace.build_model(self.model_name)
+#         except Exception as e:
+#             logger.error(f"Failed to load model: {e}")
+#             raise e
+#
+#     def get_embedding(self, img_path: str) -> List[float]:
+#         try:
+#             embeddings = DeepFace.represent(
+#                 img_path=img_path,
+#                 model_name=self.model_name,
+#                 detector_backend=self.detector_backend,
+#                 enforce_detection=True,
+#                 align=True
+#             )
+#             if not embeddings: return None
+#             return embeddings[0]["embedding"]
+#         except Exception as e:
+#             logger.error(f"Error: {e}")
+#             return None
