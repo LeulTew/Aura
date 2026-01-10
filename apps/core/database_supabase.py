@@ -159,6 +159,36 @@ def get_stats() -> Dict[str, Any]:
         return {"total_faces": 0, "table_exists": False}
 
 
+def get_user_embedding(user_id: str) -> Optional[List[float]]:
+    """Fetch the reference face embedding for a specific user."""
+    try:
+        client = get_client()
+        res = client.table("users").select("embedding").eq("id", user_id).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["embedding"]
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching user embedding for {user_id}: {e}")
+        return None
+
+
+def add_photo_matches(matches: List[Dict[str, Any]]) -> int:
+    """
+    Batch insert photo matches into the junction table.
+    matches: List of {photo_id, user_id, similarity}
+    """
+    if not matches:
+        return 0
+    try:
+        client = get_client()
+        # Use upsert to avoid errors on re-matching
+        result = client.table("photo_matches").upsert(matches).execute()
+        return len(result.data) if result.data else 0
+    except Exception as e:
+        logger.error(f"Error adding photo matches: {e}")
+        return 0
+
+
 # ============================================================================
 # LEGACY LANCEDB IMPLEMENTATION (For Reference)
 # ============================================================================

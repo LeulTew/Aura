@@ -82,7 +82,54 @@ class DBStatsResponse(BaseModel):
     table_exists: bool
 
 
-# Endpoints
+class MatchResponse(BaseModel):
+    success: bool
+    count: int = 0
+    error: Optional[str] = None
+
+# ... existing endpoints ...
+
+@app.post("/api/match/mine", response_model=MatchResponse)
+async def match_mine(user_id: str = Query(..., description="The Supabase Auth User ID")):
+    """
+    Triggers face matching for the current user against all indexed photos.
+    This is usually called post-registration or post-face-login.
+    """
+    from database_supabase import get_user_embedding, search_similar, add_photo_matches
+    
+    try:
+        # 1. Get user embedding
+        embedding = get_user_embedding(user_id)
+        if not embedding:
+            return MatchResponse(success=False, error="User embedding not found. Please scan face first.")
+
+        # 2. Search for similar faces
+        # Threshold can be overridden by env var
+        threshold = float(os.getenv("MATCH_THRESHOLD", 0.6))
+        matches = search_similar(embedding, threshold=threshold, limit=500)
+        
+        if not matches:
+            return MatchResponse(success=True, count=0)
+
+        # 3. Prepare records for junction table
+        match_records = [
+            {
+                "photo_id": m["id"],
+                "user_id": user_id,
+                "similarity": m["similarity"]
+            }
+            for m in matches
+        ]
+        
+        # 4. Batch insert/upsert matches
+        stored_count = add_photo_matches(match_records)
+        
+        return MatchResponse(success=True, count=stored_count)
+
+    except Exception as e:
+        logger.error(f"Error in match_mine: {e}")
+        return MatchResponse(success=False, error=str(e))
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to Aura Core API (Supabase Edition)", "status": "running"}

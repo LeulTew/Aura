@@ -2,7 +2,7 @@
 import { useCamera } from '../hooks/useCamera';
 import { Camera, Battery, AlertTriangle, Loader2 } from 'lucide-react';
 
-export function CameraConnect() {
+export default function CameraConnect() {
   const { status, cameraName, batteryLevel, error, logs, connect, disconnect, triggerCapture } = useCamera();
 
   if (status === 'connected') {
