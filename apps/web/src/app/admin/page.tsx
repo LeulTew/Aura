@@ -98,19 +98,18 @@ export default function AdminPage() {
   };
 
   // Bulk Upload Logic
-  const processFiles = async (files: FileList | File[]) => {
+  const processFiles = async (items: { file: File, relativePath: string }[]) => {
     setIsUploading(true);
     setUploadProgress(0);
-    const fileList = Array.from(files);
     
-    for (let i = 0; i < fileList.length; i++) {
-        const file = fileList[i];
-        setUploadStatus(`Processing ${i + 1}/${fileList.length}: ${file.name}`);
-        setUploadProgress(Math.floor((i / fileList.length) * 100));
+    for (let i = 0; i < items.length; i++) {
+        const { file, relativePath } = items[i];
+        setUploadStatus(`Processing ${i + 1}/${items.length}: ${relativePath || file.name}`);
+        setUploadProgress(Math.floor((i / items.length) * 100));
 
         try {
             // 1. Upload to Supabase Storage
-            const fileExt = file.name.split('.').pop();
+            const fileExt = file.name.split('.').pop() || '';
             const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
             const filePath = `uploads/${fileName}`;
 
@@ -126,8 +125,10 @@ export default function AdminPage() {
             formData.append('path', filePath);
             formData.append('metadata', JSON.stringify({
                 original_name: file.name,
+                relative_path: relativePath || file.name,
                 size: file.size,
                 type: file.type,
+                uploaded_at: new Date().toISOString(),
                 uploaded_by: 'admin_panel'
             }));
 
@@ -139,7 +140,7 @@ export default function AdminPage() {
 
             if (!indexRes.ok) {
                 const errData = await indexRes.json();
-                console.error("Indexing failed for", file.name, errData);
+                console.error("Indexing failed for", relativePath || file.name, errData);
             }
         } catch (err: any) {
             console.error("Failed to process", file.name, err);
@@ -148,7 +149,7 @@ export default function AdminPage() {
     }
 
     setUploadProgress(100);
-    setUploadStatus(`Complete! ${fileList.length} items processed.`);
+    setUploadStatus(`Complete! ${items.length} items processed.`);
     
     // Refresh Grid
     await fetchPhotos();
@@ -160,11 +161,54 @@ export default function AdminPage() {
     }, 3000);
   };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        processFiles(e.dataTransfer.files);
+    
+    const items = e.dataTransfer.items;
+    if (!items) return;
+
+    const filesToProcess: { file: File, relativePath: string }[] = [];
+    
+    const traverseEntry = async (entry: any, path: string = "") => {
+        if (entry.isFile) {
+            const file = await new Promise<File>((resolve) => entry.file(resolve));
+            filesToProcess.push({ file, relativePath: path + file.name });
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            const entries = await new Promise<any[]>((resolve) => {
+                let allEntries: any[] = [];
+                const readBatch = () => {
+                    reader.readEntries((batch: any[]) => {
+                        if (batch.length === 0) {
+                            resolve(allEntries);
+                        } else {
+                            allEntries = allEntries.concat(batch);
+                            readBatch();
+                        }
+                    });
+                };
+                readBatch();
+            });
+            for (const subEntry of entries) {
+                await traverseEntry(subEntry, path + entry.name + "/");
+            }
+        }
+    };
+
+    const traversalPromises = [];
+    for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry();
+        if (entry) {
+            traversalPromises.push(traverseEntry(entry));
+        }
+    }
+    
+    setUploadStatus("Scanning directory structure...");
+    await Promise.all(traversalPromises);
+    
+    if (filesToProcess.length > 0) {
+        processFiles(filesToProcess);
     }
   }, []);
 
@@ -346,9 +390,18 @@ export default function AdminPage() {
                     type="file" 
                     ref={fileInputRef} 
                     className="hidden" 
-                    onChange={(e) => e.target.files && processFiles(e.target.files)}
+                    onChange={(e) => {
+                        if (e.target.files) {
+                            const files = Array.from(e.target.files).map(f => ({
+                                file: f,
+                                relativePath: (f as any).webkitRelativePath || f.name
+                            }));
+                            processFiles(files);
+                        }
+                    }}
                     accept="image/*"
                     multiple
+                    {...({ webkitdirectory: "", directory: "" } as any)}
                 />
                 
                 {isUploading ? (
