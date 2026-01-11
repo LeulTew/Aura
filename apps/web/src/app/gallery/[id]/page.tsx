@@ -28,11 +28,11 @@ export default function GuestGalleryPage() {
          if (error) throw error;
          
          const transformedMatches: SearchMatch[] = (data || []).map((p: any) => ({
-           id: p.id,
+           id: p.id?.toString() || Math.random().toString(),
            source_path: p.full_path,
-           distance: 0, // In this view, we don't necessarily have distance info
-           photo_date: p.created_at.split('T')[0],
-           created_at: p.created_at
+           distance: 0,
+           photo_date: (p.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+           created_at: p.created_at || new Date().toISOString()
          }));
 
          setMatches(transformedMatches);

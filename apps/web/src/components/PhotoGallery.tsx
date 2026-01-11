@@ -67,9 +67,9 @@ function PhotoCard({ photo }: { photo: PhotoRecord }) {
       {/* Bottom Label (Minimal) */}
       <div className="absolute bottom-2 left-2 flex items-center gap-2">
          <span className="font-mono text-[8px] text-white/40 tracking-tighter uppercase">
-            IMG_{photo.id.toString().slice(-4)}
+            IMG_{photo.id?.toString().slice(-4) || '....'}
          </span>
-         {photo.status === 'processing' && (
+         {photo.status === 'pending' && (
             <span className="h-1 w-4 bg-[var(--accent)] animate-pulse" />
          )}
       </div>
