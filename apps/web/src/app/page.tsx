@@ -36,14 +36,21 @@ export default function Home() {
                 const saved = sessionStorage.getItem(STORAGE_KEY);
                 if (saved) {
                     const { state, results } = JSON.parse(saved);
+                    // ONLY restore if we are in results view with actual results.
+                    // Otherwise, force landing to prevent getting stuck in scanning.
                     if (state === "results" && results?.length > 0) {
                         setSearchResults(results);
                         setAppState("results");
+                    } else {
+                        // Clear invalid or stale state
+                        sessionStorage.removeItem(STORAGE_KEY);
+                        setAppState("landing");
                     }
                 }
             }
         } catch (e) {
             console.error("Failed to restore state:", e);
+            sessionStorage.removeItem(STORAGE_KEY);
         }
     }, []);
 
