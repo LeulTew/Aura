@@ -78,7 +78,7 @@ export default function LandingPage() {
                     <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[2rem] blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-1000" />
                     <div className="relative border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl bg-[#0a0a0a]">
                         <img 
-                            src="/aura_pro_hero_2026_1768164016208.png" 
+                            src="/dashboard-preview.png" 
                             alt="Aura Pro Interface" 
                             className="w-full h-auto transform group-hover:scale-[1.01] transition-transform duration-1000"
                         />

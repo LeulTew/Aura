@@ -66,7 +66,8 @@ export default function AdminPage() {
     setLoading(true);
     
     try {
-        const res = await fetch("/api/admin/login", {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+        const res = await fetch(`${backendUrl}/api/admin/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pin })
