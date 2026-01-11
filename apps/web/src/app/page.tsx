@@ -151,13 +151,16 @@ export default function Home() {
             </div>
 
             {/* Navigation */}
-            <nav className="fixed top-0 w-full p-10 flex justify-between items-center z-50">
-                <div className="font-heading font-semibold tracking-[4px] uppercase text-sm text-white">
+            <nav className="fixed top-0 w-full p-10 flex justify-between items-center z-[200]">
+                <Link href="/" className="font-heading font-semibold tracking-[4px] uppercase text-sm text-white hover:opacity-70 transition-opacity">
                     Aura
-                </div>
+                </Link>
                 <div className="flex items-center gap-8">
-                  <Link href="/admin/capture" className="text-white/40 hover:text-white transition-colors font-heading text-[10px] tracking-widest uppercase">
-                    Admin
+                  <Link href="/admin/capture" className="text-white/40 hover:text-[var(--accent)] transition-colors font-heading text-[10px] tracking-widest uppercase">
+                    Station
+                  </Link>
+                  <Link href="/admin" className="text-white/40 hover:text-[var(--accent)] transition-colors font-heading text-[10px] tracking-widest uppercase">
+                    Terminal
                   </Link>
                   <div className="relative">
                       <div className="w-5 h-0.5 bg-[var(--accent)]" />

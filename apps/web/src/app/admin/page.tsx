@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import VoidBackground from "@/components/VoidBackground";
 
 interface FolderItem {
   name: string;
@@ -125,8 +126,7 @@ export default function AdminPage() {
   if (!token) {
     return (
       <main className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[var(--accent)] opacity-[0.03] blur-[120px] rounded-full" />
+        <VoidBackground />
         
         <form onSubmit={handleLogin} className="w-full max-w-md backdrop-blur-3xl bg-white/[0.02] p-12 rounded-[32px] border border-white/10 z-10 transition-all hover:border-white/20">
           <div className="flex flex-col items-center mb-12">
