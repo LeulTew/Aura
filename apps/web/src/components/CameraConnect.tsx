@@ -1,81 +1,93 @@
-/* eslint-disable */ 
+/* eslint-disable */
 'use client';
 import { useCamera } from '../hooks/useCamera';
-import { Camera, Battery, AlertTriangle, Loader2 } from 'lucide-react';
+import { Camera, Battery, AlertTriangle, Loader2, Zap, WifiOff } from 'lucide-react';
 
 export default function CameraConnect() {
   const { status, cameraName, batteryLevel, error, logs, connect, disconnect, triggerCapture } = useCamera();
 
   if (status === 'connected') {
     return (
-      <>
-        <div className="flex items-center gap-4 p-4 border rounded-lg bg-green-50 border-green-200">
-          <Camera className="w-6 h-6 text-green-700" />
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-6 p-6 border border-white/10 bg-white/5 backdrop-blur-xl">
+          <div className="w-12 h-12 rounded bg-[var(--accent)]/10 flex items-center justify-center border border-[var(--accent)]/30">
+            <Camera className="w-6 h-6 text-[var(--accent)]" />
+          </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-green-900">{cameraName}</h3>
-            <div className="flex items-center gap-2 text-sm text-green-700">
-               <Battery className="w-4 h-4" />
-               <span>{batteryLevel !== null ? `${batteryLevel}%` : 'Unknown'}</span>
+            <h3 className="font-heading font-semibold text-white tracking-tight">{cameraName}</h3>
+            <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-widest text-white/40 mt-1">
+               <span className="flex items-center gap-1">
+                 <Battery className="w-3 h-3 text-[var(--accent)]" />
+                 {batteryLevel !== null ? `${batteryLevel}%` : '---'}
+               </span>
+               <span className="w-1 h-1 bg-white/20 rounded-full" />
+               <span className="text-green-500">Live Port 01</span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
              <button
                onClick={triggerCapture}
-               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+               className="h-10 px-5 bg-[var(--accent)] text-black font-mono text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-all active:scale-95"
              >
-               Capture & Sync
+               Trigger
              </button>
              <button 
                onClick={disconnect}
-               className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50"
+               className="h-10 px-5 border border-white/10 text-white/40 hover:text-white hover:bg-white/5 font-mono text-[10px] uppercase tracking-widest transition-all"
              >
-               Disconnect
+               Eject
              </button>
           </div>
         </div>
         
         {logs.length > 0 && (
-           <div className="mt-4 p-3 bg-gray-900 text-gray-200 rounded-lg text-xs font-mono">
-              {logs.map((L, i) => <div key={i}>{L}</div>)}
+           <div className="p-4 bg-black/40 border border-white/5 text-white/30 text-[9px] font-mono tracking-tighter uppercase max-h-32 overflow-y-auto">
+              <div className="border-b border-white/5 pb-2 mb-2 text-white/10 tracking-[0.3em]">System Output</div>
+              {logs.map((L, i) => (
+                <div key={i} className="mb-1">
+                  <span className="text-[var(--accent)]/40 mr-2">[{new Date().toLocaleTimeString()}]</span>
+                  {L}
+                </div>
+              ))}
            </div>
         )}
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="p-6 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 bg-gray-50">
-        <div className="p-4 bg-white rounded-full shadow-sm">
-           <Camera className="w-8 h-8 text-gray-500" />
+    <div className="flex flex-col gap-6">
+      <div className="p-10 border border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-6 group hover:border-[var(--accent)]/30 transition-all">
+        <div className="w-16 h-16 rounded bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-[var(--accent)]/20 transition-all">
+           <Zap className="w-8 h-8 text-white/10 group-hover:text-[var(--accent)]/40 transition-all" />
         </div>
-        <div className="text-center">
-          <h3 className="text-lg font-medium">Connect Camera</h3>
-          <p className="text-sm text-gray-500 max-w-xs mx-auto mt-1">
-             Connect your camera via USB. Ensure it is powered on and "PC Remote" mode is active (if applicable).
+        <div className="text-center space-y-2">
+          <h3 className="text-sm font-heading font-light text-white uppercase tracking-widest">Connect Hub</h3>
+          <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest max-w-[200px] leading-relaxed">
+             Sync precision optics via physical USB interface.
           </p>
         </div>
         
         <button
           onClick={connect}
           disabled={status === 'connecting'}
-          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+          className="h-14 px-10 bg-[var(--accent)] text-black font-mono text-[11px] font-bold uppercase tracking-[0.2em] transition-all hover:opacity-90 active:scale-95 disabled:opacity-20 flex items-center gap-3"
         >
           {status === 'connecting' ? (
              <>
                <Loader2 className="w-4 h-4 animate-spin" />
-               Connecting...
+               Searching...
              </>
           ) : (
-            'Connect via USB'
+            'Establish Link'
           )}
         </button>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800">
-           <AlertTriangle className="w-5 h-5 shrink-0" />
-           <p>{error}</p>
+        <div className="p-4 bg-red-500/5 border border-red-500/20 flex items-start gap-4 text-[10px] font-mono text-red-400 uppercase tracking-widest">
+           <WifiOff className="w-4 h-4 shrink-0" />
+           <p className="leading-relaxed">{error}</p>
         </div>
       )}
     </div>
