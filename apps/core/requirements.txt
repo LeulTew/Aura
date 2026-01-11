@@ -1,11 +1,11 @@
 fastapi
-uvicorn
+uvicorn[standard]
 numpy
 insightface
 onnxruntime
+opencv-python-headless
 pillow
 python-multipart
 lancedb
 supabase
 pydantic-settings
-python-multipart

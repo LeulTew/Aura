@@ -1,0 +1,22 @@
+# Ignore Python virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore test files
+tests/
+.pytest_cache/
+.coverage
+
+# Ignore data directories
+data/
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore environment files
+.env
+.env.example
