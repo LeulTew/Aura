@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, Share2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Download, Share2, ArrowLeft, Image as ImageIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
@@ -33,6 +33,7 @@ export default function GuestGalleryPage() {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(-1);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     async function fetchPhotos() {
@@ -77,6 +78,52 @@ export default function GuestGalleryPage() {
 
   const slides = useMemo(() => photos.map(p => ({ src: p.src })), [photos]);
 
+  // Download as ZIP (Desktop fallback)
+  const downloadAsZip = async (files: File[]) => {
+    const JSZip = (await import('jszip')).default;
+    const { saveAs } = await import('file-saver');
+    const zip = new JSZip();
+    files.forEach(f => zip.file(f.name, f));
+    const blob = await zip.generateAsync({ type: 'blob' });
+    saveAs(blob, 'my_photos.zip');
+  };
+
+  // Smart Save All
+  const handleSaveAll = async () => {
+    if (photos.length === 0) return;
+    setIsSaving(true);
+
+    try {
+      if (photos.length === 1) {
+        // Single photo: Direct download
+        const link = document.createElement('a');
+        link.href = photos[0].src;
+        link.download = `photo_${photos[0].id}.jpg`;
+        link.click();
+        return;
+      }
+
+      // Multi-photo: Fetch blobs
+      const files = await Promise.all(photos.map(async (p, i) => {
+        const res = await fetch(p.src);
+        const blob = await res.blob();
+        return new File([blob], `photo_${i + 1}.jpg`, { type: 'image/jpeg' });
+      }));
+
+      // Try Share API (Mobile)
+      if (navigator.canShare?.({ files })) {
+        await navigator.share({ files });
+      } else {
+        // Fallback: ZIP (Desktop)
+        await downloadAsZip(files);
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-6 font-sans">
       {/* Header */}
@@ -93,9 +140,17 @@ export default function GuestGalleryPage() {
             </div>
         </div>
         <div className="flex items-center gap-3">
-            <Button variant="outline" className="rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 flex items-center gap-2 text-white h-11">
-                <Share2 className="w-4 h-4" />
-                Share
+            <Button 
+              variant="outline" 
+              className="rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 flex items-center gap-2 text-white h-11"
+              onClick={handleSaveAll}
+              disabled={isSaving || photos.length === 0}
+            >
+              {isSaving ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Preparing...</>
+              ) : (
+                <><Download className="w-4 h-4" /> Save All</>  
+              )}
             </Button>
         </div>
       </header>
