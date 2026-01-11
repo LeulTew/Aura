@@ -16,10 +16,37 @@ export default function GuestGalleryPage() {
   useEffect(() => {
     async function fetchPhotos() {
        if (!userId) return;
-       
        setLoading(true);
+       
        try {
-         // Because of RLS, this simple query only returns matched photos for the session
+         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+         
+         // 1. Check if this is a Bundle ID
+         const bundleRes = await fetch(`${backendUrl}/api/bundles/${userId}`);
+         if (bundleRes.ok) {
+             const bundleData = await bundleRes.json();
+             // bundleData.photo_ids contains the paths or IDs
+             // In our current setup, bundles store IDs or paths. Let's assume paths for direct lookup.
+             // If they are IDs, we fetch by IDs.
+             const { data, error } = await supabase
+                .from('photos')
+                .select('*')
+                .in('id', bundleData.photo_ids); // Assuming they are IDs
+             
+             if (error) throw error;
+             
+             const transformed = (data || []).map((p: any) => ({
+                id: p.id?.toString() || Math.random().toString(),
+                source_path: p.full_path,
+                distance: 0,
+                photo_date: (p.created_at || '').split('T')[0],
+                created_at: p.created_at
+             }));
+             setMatches(transformed);
+             return;
+         }
+
+         // 2. Fallback: Standard Session Fetch
          const { data, error } = await supabase
            .from('photos')
            .select('*')

@@ -26,6 +26,9 @@ export default function AdminPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [deletionId, setDeletionId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBundleCreating, setIsBundleCreating] = useState(false);
+  const [createdBundle, setCreatedBundle] = useState<{id: string, url: string} | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,76 +97,74 @@ export default function AdminPage() {
     setPhotos([]);
   };
 
-  // Upload Logic
-  const processUpload = async (file: File) => {
+  // Bulk Upload Logic
+  const processFiles = async (files: FileList | File[]) => {
     setIsUploading(true);
-    setUploadStatus("Initializing upload stream...");
-    setUploadProgress(10);
+    setUploadProgress(0);
+    const fileList = Array.from(files);
+    
+    for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setUploadStatus(`Processing ${i + 1}/${fileList.length}: ${file.name}`);
+        setUploadProgress(Math.floor((i / fileList.length) * 100));
 
-    try {
-        // 1. Upload to Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-        const filePath = `uploads/${fileName}`;
+        try {
+            // 1. Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+            const filePath = `uploads/${fileName}`;
 
-        setUploadStatus("Pushing binary to cloud...");
-        const { error: uploadError } = await supabase.storage
-            .from('photos')
-            .upload(filePath, file);
+            const { error: uploadError } = await supabase.storage
+                .from('photos')
+                .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
-        setUploadProgress(50);
+            if (uploadError) throw uploadError;
 
-        // 2. Trigger Backend Indexing (Generates Embedding & DB Record)
-        setUploadStatus("Vectorizing face data...");
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', filePath); // Backend needs this to store refernece
-        formData.append('metadata', JSON.stringify({
-            original_name: file.name,
-            size: file.size,
-            type: file.type,
-            uploaded_by: 'admin_panel'
-        }));
+            // 2. Trigger Backend Indexing
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', filePath);
+            formData.append('metadata', JSON.stringify({
+                original_name: file.name,
+                size: file.size,
+                type: file.type,
+                uploaded_by: 'admin_panel'
+            }));
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-        const indexRes = await fetch(`${backendUrl}/api/index-photo`, {
-            method: 'POST',
-            body: formData
-        });
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const indexRes = await fetch(`${backendUrl}/api/index-photo`, {
+                method: 'POST',
+                body: formData
+            });
 
-        if (!indexRes.ok) {
-            const errData = await indexRes.json();
-            throw new Error(errData.detail || "Indexing failed");
+            if (!indexRes.ok) {
+                const errData = await indexRes.json();
+                console.error("Indexing failed for", file.name, errData);
+            }
+        } catch (err: any) {
+            console.error("Failed to process", file.name, err);
+            setError(`Failed at ${file.name}: ${err.message}`);
         }
-        
-        const indexData = await indexRes.json();
-        setUploadProgress(100);
-        setUploadStatus(`Indexed: ${indexData.faces_found || 1} face(s) found`);
-        
-        // Refresh Grid
-        await fetchPhotos();
-        
-        // Reset after delay
-        setTimeout(() => {
-            setIsUploading(false);
-            setUploadStatus("");
-            setUploadProgress(0);
-        }, 2000);
-
-    } catch (err: any) {
-        console.error("Upload failed:", err);
-        setError(`Upload Failed: ${err.message}`);
-        setIsUploading(false);
     }
+
+    setUploadProgress(100);
+    setUploadStatus(`Complete! ${fileList.length} items processed.`);
+    
+    // Refresh Grid
+    await fetchPhotos();
+    
+    setTimeout(() => {
+        setIsUploading(false);
+        setUploadStatus("");
+        setUploadProgress(0);
+    }, 3000);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        processUpload(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFiles(e.dataTransfer.files);
     }
   }, []);
 
@@ -199,6 +200,38 @@ export default function AdminPage() {
     }
   };
   
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+    });
+  };
+
+  const handleCreateBundle = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBundleCreating(true);
+    try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+        const res = await fetch(`${backendUrl}/api/bundles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: `Bundle_${new Date().toISOString().slice(0,10)}`,
+                photo_ids: Array.from(selectedIds)
+            })
+        });
+        const data = await res.json();
+        setCreatedBundle(data);
+        setSelectedIds(new Set());
+    } catch (err: any) {
+        alert("Bundle creation failed: " + err.message);
+    } finally {
+        setIsBundleCreating(false);
+    }
+  };
+
   // Signed URL Helper
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   
@@ -313,8 +346,9 @@ export default function AdminPage() {
                     type="file" 
                     ref={fileInputRef} 
                     className="hidden" 
-                    onChange={(e) => e.target.files?.[0] && processUpload(e.target.files[0])}
+                    onChange={(e) => e.target.files && processFiles(e.target.files)}
                     accept="image/*"
+                    multiple
                 />
                 
                 {isUploading ? (
@@ -356,21 +390,37 @@ export default function AdminPage() {
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {photos.map((p) => (
-                        <div key={p.id} className="relative aspect-[3/4] group bg-gray-900 rounded-xl overflow-hidden border border-white/5">
+                        <div 
+                            key={p.id} 
+                            onClick={() => toggleSelection(p.id)}
+                            className={`relative aspect-[3/4] group bg-gray-900 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                                selectedIds.has(p.id) ? 'border-[var(--accent)] scale-[0.98] ring-4 ring-[var(--accent)]/20' : 'border-white/5 hover:border-white/20'
+                            }`}
+                        >
                             <img 
                                 src={imageUrls[p.full_path] || `https://placehold.co/400x600/101010/FFF?text=Loading`} 
                                 alt="" 
-                                className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500"
+                                className={`w-full h-full object-cover transition-opacity duration-500 ${selectedIds.has(p.id) ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}
                             />
                             
+                            {/* Selection Checkmark */}
+                            {selectedIds.has(p.id) && (
+                                <div className="absolute top-2 right-2 w-6 h-6 bg-[var(--accent)] rounded-full flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
+                                    <CheckCircle2 className="w-4 h-4 text-white" />
+                                </div>
+                            )}
+
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                                 <div className="flex justify-between items-end">
-                                    <div>
+                                    <div onClick={(e) => e.stopPropagation()}>
                                         <p className="text-[10px] font-mono text-white/50 truncate w-24">{p.id.slice(0,8)}</p>
                                         <p className="text-[9px] font-mono text-[var(--accent)] mt-0.5">VECTORIZED</p>
                                     </div>
                                     <button 
-                                        onClick={() => handleDelete(p.id, p.full_path)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(p.id, p.full_path);
+                                        }}
                                         className="w-8 h-8 flex items-center justify-center bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white rounded transition-colors"
                                     >
                                         {deletionId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -383,6 +433,66 @@ export default function AdminPage() {
             )}
          </section>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-2xl px-8 py-5 rounded-[2rem] border border-white/10 shadow-2xl flex items-center gap-10 animate-in slide-in-from-bottom-10 duration-500">
+              <div className="flex flex-col">
+                  <span className="text-[var(--accent)] font-bold text-xs uppercase tracking-widest">{selectedIds.size} SELECTED</span>
+                  <span className="text-[9px] font-mono text-white/30 uppercase mt-0.5">Awaiting instruction</span>
+              </div>
+              <div className="w-px h-10 bg-white/10" />
+              <button 
+                onClick={handleCreateBundle}
+                disabled={isBundleCreating}
+                className="px-8 py-3 bg-white text-black font-mono text-[10px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all flex items-center gap-2"
+              >
+                  {isBundleCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Create Bundle
+              </button>
+              <button 
+                onClick={() => setSelectedIds(new Set())}
+                className="text-white/40 hover:text-white text-[10px] font-mono uppercase tracking-widest transition-colors"
+              >
+                  Clear
+              </button>
+          </div>
+      )}
+
+      {/* Bundle Result Dialog */}
+      {createdBundle && (
+          <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="bg-[#0a0a0a] border border-white/10 p-12 rounded-[2.5rem] max-w-md w-full text-center space-y-8 animate-in zoom-in duration-300">
+                  <div className="w-20 h-20 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-10 h-10 text-green-500" />
+                  </div>
+                  <div>
+                      <h3 className="text-2xl font-light text-white tracking-widest uppercase">Bundle Initialized</h3>
+                      <p className="text-white/30 font-mono text-[10px] mt-2 uppercase tracking-widest">Share this unique event URL</p>
+                  </div>
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                      <p className="text-[var(--accent)] font-mono text-[10px] break-all uppercase tracking-widest">ID: {createdBundle.id}</p>
+                  </div>
+                  <div className="flex flex-col gap-4">
+                      <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}${createdBundle.url}`);
+                            alert("Link copied!");
+                        }}
+                        className="w-full py-4 bg-white text-black font-mono text-xs font-bold uppercase tracking-widest rounded-xl hover:opacity-90 transition-all"
+                      >
+                          Copy Gallery Link
+                      </button>
+                      <button 
+                        onClick={() => setCreatedBundle(null)}
+                        className="w-full py-4 border border-white/10 text-white/40 hover:text-white transition-all font-mono text-xs uppercase tracking-widest rounded-xl"
+                      >
+                          Dismiss
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </main>
   );
 }
