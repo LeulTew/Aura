@@ -22,55 +22,28 @@ interface SearchMatch {
 const STORAGE_KEY = "aura_search_state";
 
 export default function Home() {
+    // State management
     const [appState, setAppState] = useState<AppState>("landing");
     const [isProcessing, setIsProcessing] = useState(false);
     const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [isHydrated, setIsHydrated] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false); // Still good to have for client-side rendering consistency
 
-    // Restore state from sessionStorage on mount
     useEffect(() => {
         setIsHydrated(true);
-        try {
-            if (typeof window !== "undefined") {
-                const saved = sessionStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const { state, results } = JSON.parse(saved);
-                    // ONLY restore if we are in results view with actual results.
-                    // Otherwise, force landing to prevent getting stuck in scanning.
-                    if (state === "results" && results?.length > 0) {
-                        setSearchResults(results);
-                        setAppState("results");
-                    } else {
-                        // Clear invalid or stale state
-                        sessionStorage.removeItem(STORAGE_KEY);
-                        setAppState("landing");
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("Failed to restore state:", e);
-            sessionStorage.removeItem(STORAGE_KEY);
+        // Explicitly clear any stale state from previous sessions that might cause confusion
+        if (typeof window !== "undefined") {
+             sessionStorage.removeItem(STORAGE_KEY);
         }
     }, []);
 
-    // Save state to sessionStorage when results change
-    useEffect(() => {
-        if (isHydrated && appState === "results" && searchResults.length > 0) {
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-                state: appState,
-                results: searchResults
-            }));
-        }
-    }, [appState, searchResults, isHydrated]);
-
-    // Clear storage when going back to landing
+    // Clear state when going back to landing
     const handleBack = () => {
-        sessionStorage.removeItem(STORAGE_KEY);
         setAppState("landing");
         setSearchResults([]);
         setError(null);
     };
+
 
     const handleScanClick = () => {
         setAppState("scanning");
