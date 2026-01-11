@@ -4,7 +4,7 @@
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { QRCodeSVG } from 'qrcode.react';
-import { QrCode, Share, ExternalLink, Activity, ArrowLeft } from 'lucide-react';
+import { QrCode, Share, ExternalLink, Activity, ArrowLeft, Camera } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import VoidBackground from '@/components/VoidBackground';
@@ -22,28 +22,30 @@ const PhotoGallery = dynamic(() => import('../../../components/PhotoGallery'), {
 
 export default function CapturePage() {
   const [eventUrl, setEventUrl] = useState('');
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setEventUrl(window.location.origin);
+      setEventUrl(`${window.location.origin}/scan`);
     }
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden font-sans">
+    <div className="min-h-screen relative overflow-x-hidden font-sans bg-[#050505]">
       <VoidBackground />
       
-      {/* Exact Match Header Style */}
-      <nav className="fixed top-0 w-full p-10 flex justify-between items-center z-50">
-          <div className="flex items-center gap-6">
-              <Link href="/" className="font-heading font-semibold tracking-[4px] uppercase text-sm text-white flex items-center gap-2">
-                  <ArrowLeft className="w-4 h-4" />
-                  Aura
+      {/* 2026 Header Style */}
+      <nav className="fixed top-0 w-full p-8 flex justify-between items-center z-[200]">
+          <div className="flex items-center gap-2">
+              <Link href="/" className="w-8 h-8 bg-[var(--accent)] rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <Camera className="w-5 h-5 text-white" />
               </Link>
+              <div className="flex flex-col">
+                  <span className="font-heading font-semibold tracking-[4px] uppercase text-[10px] text-white">Aura Pro</span>
+                  <span className="text-[8px] font-mono text-white/30 tracking-widest uppercase">Admin Station</span>
+              </div>
           </div>
           <div className="flex items-center gap-8">
-            <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-bold border border-green-500/20 uppercase tracking-widest">
-                <Activity className="w-3 h-3" />
+            <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-mono border border-blue-500/20 uppercase tracking-widest">
+                <Activity className="w-3 h-3 animate-pulse" />
                 Live Sync
             </span>
             <div className="relative">
