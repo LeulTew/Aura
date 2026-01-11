@@ -1,231 +1,113 @@
-/* eslint-disable */ 
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-// import { RowsPhotoAlbum } from 'react-photo-album';
-// import "react-photo-album/rows.css";
-import Lightbox from 'yet-another-react-lightbox';
-import 'yet-another-react-lightbox/styles.css';
-import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Download, Share2, ArrowLeft, Image as ImageIcon, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useRef } from "react";
+import { useParams } from "next/navigation";
+import GalleryView, { SearchMatch, GalleryViewHandle } from "@/components/GalleryView";
 
-interface DBPhoto {
-  id: string;
-  full_path: string;
-  metadata?: { width: number; height: number };
-}
-
-interface GalleryPhoto {
-  src: string;
-  width: number;
-  height: number;
-  id: string;
+interface EnrichedPhoto {
   path: string;
+  photo_date: string;
 }
 
-export default function GuestGalleryPage() {
-  const { id: userId } = useParams();
-  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+interface BundleData {
+  id: string;
+  name: string;
+  photos: EnrichedPhoto[]; 
+  created_at: string;
+}
+
+export default function BundlePage() {
+  const params = useParams();
+  const [matches, setMatches] = useState<SearchMatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [index, setIndex] = useState(-1);
-  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [bundleName, setBundleName] = useState("");
+  const galleryRef = useRef<GalleryViewHandle>(null);
 
   useEffect(() => {
-    async function fetchPhotos() {
-       if (!userId) return;
-       
-       setLoading(true);
-       try {
-         // Because of RLS, this simple query only returns matched photos
-         const { data, error } = await supabase
-           .from('photos')
-           .select('*')
-           .order('created_at', { ascending: false });
+    if (!params.id) return;
+    
+    fetch(`/api/bundles/${params.id}`)
+      .then(async res => {
+        if (!res.ok) throw new Error("Bundle not found");
+        return res.json();
+      })
+      .then((data: BundleData) => {
+        setBundleName(data.name);
+        
+        // Use enriched metadata if present, else fallback
+        const bundleMatches: SearchMatch[] = data.photos.map((photo, idx) => ({
+          id: `bundle-${idx}`,
+          source_path: photo.path,
+          distance: 0,
+          photo_date: photo.photo_date !== "Unknown" ? photo.photo_date : (data.created_at || new Date().toISOString()),
+          created_at: data.created_at
+        }));
+        setMatches(bundleMatches);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [params.id]);
 
-         if (error) throw error;
-         
-         const transformedPhotos: GalleryPhoto[] = (data || []).map((p: any) => {
-            const photo = p as DBPhoto;
-            return {
-              src: photo.full_path, // Temporary, replaced by signed URL
-              width: photo.metadata?.width || 800,
-              height: photo.metadata?.height || 600,
-              id: photo.id,
-              path: photo.full_path
-            };
-         });
-         
-         // Generate signed URLs for private bucket photos
-         const signedPhotos = await Promise.all(transformedPhotos.map(async (p) => {
-            const { data: signData } = await supabase.storage.from('photos').createSignedUrl(p.path, 3600);
-            return { ...p, src: signData?.signedUrl || p.src };
-         }));
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center text-white">
+        <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="font-mono text-xs uppercase tracking-widest opacity-50">Unpacking Bundle...</p>
+      </div>
+    );
+  }
 
-         setPhotos(signedPhotos);
-       } catch (err) {
-         console.error('Error fetching gallery:', err);
-       } finally {
-         setLoading(false);
-       }
-    }
-    fetchPhotos();
-  }, [userId]);
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center text-red-400 font-mono">
+        {error}
+      </div>
+    );
+  }
 
-  const slides = useMemo(() => photos.map(p => ({ src: p.src })), [photos]);
-
-  // Download as ZIP (Desktop fallback)
-  const downloadAsZip = async (files: File[]) => {
-    const JSZip = (await import('jszip')).default;
-    const { saveAs } = await import('file-saver');
-    const zip = new JSZip();
-    files.forEach(f => zip.file(f.name, f));
-    const blob = await zip.generateAsync({ type: 'blob' });
-    saveAs(blob, 'my_photos.zip');
-  };
-
-  // Smart Save All
-  const handleSaveAll = async () => {
-    if (photos.length === 0) return;
-    setIsSaving(true);
-
-    try {
-      if (photos.length === 1) {
-        // Single photo: Direct download
-        const link = document.createElement('a');
-        link.href = photos[0].src;
-        link.download = `photo_${photos[0].id}.jpg`;
-        link.click();
-        return;
-      }
-
-      // Multi-photo: Fetch blobs
-      const files = await Promise.all(photos.map(async (p, i) => {
-        const res = await fetch(p.src);
-        const blob = await res.blob();
-        return new File([blob], `photo_${i + 1}.jpg`, { type: 'image/jpeg' });
-      }));
-
-      // Try Share API (Mobile)
-      if (navigator.canShare?.({ files })) {
-        await navigator.share({ files });
-      } else {
-        // Fallback: ZIP (Desktop)
-        await downloadAsZip(files);
-      }
-    } catch (err) {
-      console.error('Save failed:', err);
-    } finally {
-      setIsSaving(false);
+  const handleDownload = () => {
+    if (galleryRef.current) {
+       galleryRef.current.downloadAll();
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 font-sans">
-      {/* Header */}
-      <header className="max-w-7xl mx-auto flex items-center justify-between mb-12 h-16 sticky top-0 z-30 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5 px-2">
-        <div className="flex items-center gap-5">
-            <Link href="/">
-                <Button variant="secondary" size="icon" className="rounded-2xl bg-white/5 hover:bg-white/10 text-white border-white/5 border">
-                    <ArrowLeft className="w-5 h-5" />
-                </Button>
-            </Link>
-            <div>
-                <h1 className="text-2xl font-black tracking-tight text-white leading-none">Your Gallery</h1>
-                <p className="text-white/30 text-xs mt-1 font-medium">{photos.length} photos found</p>
-            </div>
-        </div>
-        <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              className="rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 flex items-center gap-2 text-white h-11"
-              onClick={handleSaveAll}
-              disabled={isSaving || photos.length === 0}
-            >
-              {isSaving ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Preparing...</>
-              ) : (
-                <><Download className="w-4 h-4" /> Save All</>  
-              )}
-            </Button>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto">
-        {loading ? (
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <Skeleton key={i} className="aspect-[4/5] rounded-[2rem] bg-white/5" />
-              ))}
-           </div>
-        ) : photos.length > 0 ? (
-           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+    <main className="bg-[var(--bg)] min-h-screen">
+      <div className="pt-24 pb-12 px-4 md:px-8 text-center bg-gradient-to-b from-black/50 to-transparent">
+        <div className="max-w-[1600px] mx-auto">
+           <p className="text-[var(--accent)] font-mono text-[10px] uppercase tracking-[0.2em] mb-4">
+             Shared Stash
+           </p>
+           <h1 className="text-4xl md:text-6xl font-light text-white tracking-tight mb-8">
+             {bundleName}
+           </h1>
+           
+           {/* Primary Download CTA - Centered below title */}
+           <button
+             onClick={handleDownload}
+             className="px-10 py-4 bg-gradient-to-r from-[var(--accent)] to-[#6366f1] text-white font-mono text-sm font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all rounded-full mb-6"
            >
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-              {photos.map((photo, i) => (
-                <motion.div
-                  key={photo.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="group overflow-hidden rounded-[2.5rem] relative cursor-pointer active:scale-[0.97] transition-all duration-500 shadow-2xl shadow-black/40 border border-white/5 aspect-[4/5]"
-                  onClick={() => setIndex(i)}
-                >
-                  <img 
-                    src={photo.src} 
-                    alt="" 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end p-8">
-                    <Button 
-                        variant="secondary" 
-                        className="w-full rounded-2xl bg-white text-black hover:bg-white/90 h-14 font-bold shadow-xl"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(photo.src, '_blank');
-                        }}
-                    >
-                        <Download className="w-5 h-5 mr-3" />
-                        Download
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-           </motion.div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-40 text-center space-y-8">
-             <div className="w-24 h-24 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/5">
-                <ImageIcon className="w-10 h-10 text-white/10" />
-             </div>
-             <div className="space-y-3">
-                <h3 className="text-3xl font-black text-white">Nothing here yet</h3>
-                <p className="text-white/30 max-w-sm mx-auto text-lg leading-relaxed font-light">
-                    We couldn't find any photos of you. If you just had your photo taken, wait a few seconds and try scanning again.
-                </p>
-             </div>
-             <Link href="/guest/scan">
-                <Button className="h-16 px-10 rounded-[2rem] bg-indigo-600 text-white hover:bg-indigo-500 font-bold text-lg shadow-[0_0_30px_rgba(79,70,229,0.3)]">
-                    Scan again
-                </Button>
-             </Link>
-          </div>
-        )}
-      </main>
-
-      <Lightbox
-        index={index}
-        slides={slides}
-        open={index >= 0}
-        close={() => setIndex(-1)}
+             Download All {matches.length} Photos
+           </button>
+           
+           <p className="text-gray-500 font-mono text-[10px] uppercase tracking-wide opacity-50">
+             Direct Download • High Resolution • No Expiration
+           </p>
+        </div>
+      </div>
+      
+      {/* Gallery View - Navigation download buttons hidden here as they are replaced by the header button */}
+      <GalleryView 
+        ref={galleryRef}
+        matches={matches} 
+        onBack={() => window.location.href = "/"}
+        isBundle={true}
+        hideNavActions={true}
       />
-    </div>
+    </main>
   );
 }
