@@ -428,6 +428,7 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     success: bool
     token: Optional[str] = None
+    redirect: Optional[str] = None  # Role-based redirect path
     error: Optional[str] = None
 
 class FolderItem(BaseModel):
@@ -449,21 +450,78 @@ class BundleResponse(BaseModel):
     id: str
     url: str
 
-ADMIN_PIN = "1234" # TODO: Move to env var
-JWT_SECRET = "aura_secret_key" # Keep simple for MVP
+ADMIN_PIN = os.environ.get("ADMIN_PIN", "1234")  # Default for dev
+JWT_SECRET = os.environ.get("JWT_SECRET", "aura_secret_key")
 BUNDLE_FILE = "data/bundles.json"
+
+# Role-based redirect mapping
+ROLE_REDIRECTS = {
+    "superadmin": "/superadmin",
+    "admin": "/admin",
+    "employee": "/capture"
+}
 
 @app.post("/api/admin/login", response_model=LoginResponse)
 async def admin_login(req: LoginRequest):
-    if req.pin == ADMIN_PIN:
-        import jwt
-        from datetime import datetime, timedelta, timezone
-        token = jwt.encode({
-            "role": "admin",
-            "exp": datetime.now(timezone.utc) + timedelta(days=1)
-        }, JWT_SECRET, algorithm="HS256")
-        return LoginResponse(success=True, token=token)
-    return LoginResponse(success=False, error="Invalid PIN")
+    """
+    Multi-tenant login endpoint.
+    - PIN auth for backward compat (creates/uses admin profile)
+    - Returns JWT with role, org_id, and redirect path
+    """
+    import jwt
+    from datetime import datetime, timedelta, timezone
+    from database_supabase import get_client
+    
+    try:
+        client = get_client()
+        
+        # For MVP: PIN-based login (will be replaced with email/password later)
+        if req.pin == ADMIN_PIN:
+            # Check if we have a profile for this PIN user
+            # For now, we assume PIN login = superadmin or first admin
+            
+            # Try to find existing superadmin profile
+            result = client.table("profiles").select("*").eq("role", "superadmin").limit(1).execute()
+            
+            if result.data and len(result.data) > 0:
+                profile = result.data[0]
+                role = profile.get("role", "admin")
+                org_id = profile.get("org_id")
+                org_slug = None
+                
+                # If org_id exists, fetch org slug
+                if org_id:
+                    org_result = client.table("organizations").select("slug").eq("id", org_id).single().execute()
+                    if org_result.data:
+                        org_slug = org_result.data.get("slug")
+            else:
+                # No profile yet - treat as legacy admin (will be superadmin)
+                role = "admin"
+                org_id = None
+                org_slug = None
+            
+            # Build JWT with all claims
+            token = jwt.encode({
+                "role": role,
+                "org_id": str(org_id) if org_id else None,
+                "org_slug": org_slug,
+                "exp": datetime.now(timezone.utc) + timedelta(days=7)
+            }, JWT_SECRET, algorithm="HS256")
+            
+            redirect_path = ROLE_REDIRECTS.get(role, "/admin")
+            
+            return LoginResponse(
+                success=True, 
+                token=token,
+                redirect=redirect_path
+            )
+        
+        return LoginResponse(success=False, error="Invalid PIN")
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return LoginResponse(success=False, error="Authentication failed")
+
 
 @app.get("/api/admin/folders", response_model=FolderResponse)
 async def list_folders(path: str = Query(default="/")):

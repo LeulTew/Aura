@@ -54,4 +54,5 @@ tmp/
 # LanceDB data (binary, should not be committed)
 apps/core/data/
 ai_rules.md
+client_project_plan.md
 .cursorrules

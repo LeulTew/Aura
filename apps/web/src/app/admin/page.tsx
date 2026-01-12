@@ -78,9 +78,16 @@ export default function AdminPage() {
         const data = await res.json();
         
         if (data.success) {
-          setToken(data.token);
           sessionStorage.setItem("admin_token", data.token);
           setError("");
+          
+          // Handle role-based redirect
+          if (data.redirect && data.redirect !== '/admin') {
+            window.location.href = data.redirect;
+            return;
+          }
+          
+          setToken(data.token);
         } else {
           setError("Access Denied: Invalid PIN");
         }
