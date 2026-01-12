@@ -2,12 +2,11 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import VoidBackground from "@/components/VoidBackground";
 import { supabase } from "@/lib/supabase";
 import { 
     Loader2, Building2, Users, HardDrive, Activity, 
     Plus, ArrowLeft, RefreshCw, AlertCircle,
-    CheckCircle2, XCircle, Upload
+    CheckCircle2, XCircle, Camera
 } from "lucide-react";
 import Link from 'next/link';
 
@@ -42,6 +41,12 @@ export default function SuperAdminPage() {
     const [newTenantSlug, setNewTenantSlug] = useState("");
     const [creating, setCreating] = useState(false);
 
+    // Design tokens - Editorial style
+    const accentColor = '#7C3AED'; // Purple for SuperAdmin
+    const fontDisplay = "font-sans font-black uppercase leading-[0.9] tracking-[-0.03em]";
+    const fontMono = "font-mono text-xs uppercase tracking-[0.15em] font-medium";
+    const container = "max-w-[1200px] mx-auto w-full";
+
     useEffect(() => {
         const t = sessionStorage.getItem("admin_token");
         if (t) {
@@ -58,7 +63,6 @@ export default function SuperAdminPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch organizations
             const { data: orgData, error: orgError } = await supabase
                 .from('organizations')
                 .select('*')
@@ -71,7 +75,6 @@ export default function SuperAdminPage() {
                 setOrgs(orgData || []);
             }
             
-            // Fetch stats
             const { count: photoCount } = await supabase
                 .from('photos')
                 .select('*', { count: 'exact', head: true });
@@ -153,220 +156,191 @@ export default function SuperAdminPage() {
 
     if (!token) {
         return (
-            <main className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden font-sans">
-                <VoidBackground />
-                <div className="text-center z-10">
-                    <Loader2 className="w-10 h-10 text-[var(--accent)] animate-spin mx-auto mb-4" />
-                    <p className="text-white/40 font-mono text-xs uppercase tracking-widest">Initializing...</p>
-                </div>
-            </main>
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+            </div>
         );
     }
 
     return (
-        <main className="min-h-screen bg-[#050505] text-white font-sans relative">
-            <div className="fixed inset-0 z-0 opacity-20 pointer-events-none">
-                <VoidBackground />
-            </div>
-
-            {/* Header - Matching admin page exactly */}
-            <header className="fixed top-0 w-full z-50 px-8 py-6 bg-black/50 backdrop-blur-md border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/" className="w-10 h-10 bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-lg flex items-center justify-center hover:bg-[var(--accent)]/20 transition-colors">
-                        <ArrowLeft className="w-5 h-5 text-[var(--accent)]" />
-                    </Link>
-                    <div>
-                        <h1 className="text-sm font-bold uppercase tracking-widest text-white">Platform Control</h1>
-                        <p className="text-[10px] text-white/40 font-mono mt-0.5 tracking-wider">
-                            {orgs.length} TENANTS • {stats?.total_photos || 0} OBJECTS INDEXED
-                        </p>
+        <div className="min-h-screen bg-white text-black antialiased">
+            {/* HEADER */}
+            <header className="fixed top-0 w-full z-50 bg-black text-white border-b-[3px] border-white">
+                <div className={`${container} flex justify-between items-center py-4 px-8`}>
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="w-10 h-10 bg-white flex items-center justify-center hover:bg-[#7C3AED] transition-colors group">
+                            <ArrowLeft className="w-5 h-5 text-black group-hover:text-white" />
+                        </Link>
+                        <div>
+                            <div className={fontMono} style={{ color: accentColor }}>SuperAdmin</div>
+                            <div className={`${fontDisplay} text-xl`}>Platform Control</div>
+                        </div>
                     </div>
-                </div>
-                <div className="flex items-center gap-4">
-                    <button onClick={fetchData} className="p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors">
-                        <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button onClick={handleLogout} className="px-4 py-2 border border-white/10 text-white/40 text-[10px] font-mono uppercase tracking-widest hover:bg-white/5 hover:text-white rounded transition-all">
-                        Terminate
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={fetchData} 
+                            className="w-10 h-10 border-[3px] border-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className={`${fontMono} border-[3px] border-white px-6 py-2 hover:bg-white hover:text-black transition-colors`}
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </div>
             </header>
 
-            <div className="relative z-10 pt-32 px-6 pb-20 max-w-7xl mx-auto space-y-12">
-                
-                {/* Create Tenant Zone - Matching upload zone style */}
-                <section>
-                    <div 
-                        onClick={() => setShowCreateModal(true)}
-                        className="relative h-32 border-2 border-dashed border-white/10 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden hover:border-white/30 hover:bg-white/[0.02]"
-                    >
-                        <Plus className="w-8 h-8 text-white/20 mb-2 group-hover:text-white/40 transition-colors" />
-                        <p className="text-white/30 font-mono text-[10px] uppercase tracking-widest group-hover:text-white/50 transition-colors">
-                            Create New Studio Tenant
-                        </p>
-                    </div>
-                </section>
-
-                {/* Stats Grid - Matching card styles */}
-                <section>
-                    <h2 className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-6">Platform Metrics</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="backdrop-blur-3xl bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-xl flex items-center justify-center">
-                                    <Building2 className="w-5 h-5 text-[var(--accent)]" />
-                                </div>
+            <main className="pt-[88px]">
+                {/* STATS SECTION */}
+                <section className="bg-black text-white py-16 px-8 border-b-[3px] border-white">
+                    <div className={container}>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-[3px] bg-white">
+                            <div className="bg-black p-8 text-center">
+                                <Building2 className="w-8 h-8 mx-auto mb-4" style={{ color: accentColor }} />
+                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.total_tenants || 0}</div>
+                                <div className={`${fontMono} text-white/50`}>Total Tenants</div>
                             </div>
-                            <p className="text-3xl font-light text-white mb-1">{stats?.total_tenants || 0}</p>
-                            <span className="text-[10px] text-white/30 uppercase tracking-widest font-mono">Total Tenants</span>
-                        </div>
-                        
-                        <div className="backdrop-blur-3xl bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center justify-center">
-                                    <Activity className="w-5 h-5 text-green-400" />
-                                </div>
+                            <div className="bg-black p-8 text-center">
+                                <Activity className="w-8 h-8 mx-auto mb-4 text-green-500" />
+                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.active_tenants || 0}</div>
+                                <div className={`${fontMono} text-white/50`}>Active</div>
                             </div>
-                            <p className="text-3xl font-light text-white mb-1">{stats?.active_tenants || 0}</p>
-                            <span className="text-[10px] text-white/30 uppercase tracking-widest font-mono">Active</span>
-                        </div>
-                        
-                        <div className="backdrop-blur-3xl bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center">
-                                    <Users className="w-5 h-5 text-blue-400" />
-                                </div>
+                            <div className="bg-black p-8 text-center">
+                                <Users className="w-8 h-8 mx-auto mb-4 text-blue-500" />
+                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.total_photos?.toLocaleString() || 0}</div>
+                                <div className={`${fontMono} text-white/50`}>Total Photos</div>
                             </div>
-                            <p className="text-3xl font-light text-white mb-1">{stats?.total_photos?.toLocaleString() || 0}</p>
-                            <span className="text-[10px] text-white/30 uppercase tracking-widest font-mono">Total Photos</span>
-                        </div>
-                        
-                        <div className="backdrop-blur-3xl bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center">
-                                    <HardDrive className="w-5 h-5 text-orange-400" />
-                                </div>
+                            <div className="bg-black p-8 text-center">
+                                <HardDrive className="w-8 h-8 mx-auto mb-4 text-orange-500" />
+                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.total_storage_gb.toFixed(1) || 0} GB</div>
+                                <div className={`${fontMono} text-white/50`}>Storage</div>
                             </div>
-                            <p className="text-3xl font-light text-white mb-1">{stats?.total_storage_gb.toFixed(2) || 0} GB</p>
-                            <span className="text-[10px] text-white/30 uppercase tracking-widest font-mono">Storage Used</span>
                         </div>
                     </div>
                 </section>
 
-                {/* Tenants Table */}
-                <section>
-                    <h2 className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-6">Organizations</h2>
-                    
-                    {loading ? (
-                        <div className="flex items-center justify-center py-20">
-                            <Loader2 className="w-8 h-8 text-[var(--accent)] animate-spin" />
+                {/* ACTIONS BAR */}
+                <section className="py-8 px-8 border-b-[3px] border-black bg-[#F5F5F5]">
+                    <div className={`${container} flex justify-between items-center`}>
+                        <div>
+                            <span className={fontMono} style={{ color: accentColor }}>Organizations</span>
+                            <h2 className={`${fontDisplay} text-3xl mt-1`}>Manage Tenants</h2>
                         </div>
-                    ) : orgs.length === 0 ? (
-                        <div className="py-20 text-center border border-white/5 rounded-[2rem] backdrop-blur-3xl bg-white/[0.01]">
-                            <Building2 className="w-10 h-10 text-white/10 mx-auto mb-4" />
-                            <p className="text-white/20 font-mono text-xs uppercase tracking-widest mb-6">No tenants yet</p>
-                            <button 
-                                onClick={() => setShowCreateModal(true)}
-                                className="px-6 py-3 bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] text-xs font-mono uppercase tracking-widest rounded-xl hover:bg-[var(--accent)]/20 transition-all"
-                            >
-                                Create First Tenant
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="backdrop-blur-3xl bg-white/[0.02] border border-white/5 rounded-[2rem] overflow-hidden">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-white/5">
-                                        <th className="text-left p-6 text-[10px] font-mono uppercase tracking-widest text-white/30">Name</th>
-                                        <th className="text-left p-6 text-[10px] font-mono uppercase tracking-widest text-white/30">Slug</th>
-                                        <th className="text-left p-6 text-[10px] font-mono uppercase tracking-widest text-white/30">Plan</th>
-                                        <th className="text-left p-6 text-[10px] font-mono uppercase tracking-widest text-white/30">Storage</th>
-                                        <th className="text-left p-6 text-[10px] font-mono uppercase tracking-widest text-white/30">Status</th>
-                                        <th className="text-right p-6 text-[10px] font-mono uppercase tracking-widest text-white/30">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {orgs.map((org) => (
-                                        <tr key={org.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                                            <td className="p-6">
-                                                <p className="text-white font-medium">{org.name}</p>
-                                                <p className="text-[10px] text-white/30 font-mono">{org.id.slice(0, 8)}</p>
-                                            </td>
-                                            <td className="p-6">
-                                                <span className="text-white/60 font-mono text-sm">{org.slug}</span>
-                                            </td>
-                                            <td className="p-6">
-                                                <span className={`px-2 py-1 rounded text-[10px] uppercase tracking-widest ${
-                                                    org.plan === 'enterprise' ? 'bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20' :
-                                                    org.plan === 'pro' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                                    'bg-white/5 text-white/40 border border-white/10'
-                                                }`}>
-                                                    {org.plan}
-                                                </span>
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="w-24">
-                                                    <div className="flex justify-between text-[10px] mb-1">
-                                                        <span className="text-white/40 font-mono">{formatBytes(org.storage_used_bytes)}</span>
-                                                        <span className="text-white/20 font-mono">{org.storage_limit_gb}GB</span>
-                                                    </div>
-                                                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                        <button 
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-black text-white px-8 py-4 flex items-center gap-3 hover:bg-[#7C3AED] transition-colors"
+                        >
+                            <Plus className="w-5 h-5" />
+                            <span className={fontMono}>New Tenant</span>
+                        </button>
+                    </div>
+                </section>
+
+                {/* TENANTS TABLE */}
+                <section className="px-8 py-12">
+                    <div className={container}>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="w-8 h-8 animate-spin" />
+                            </div>
+                        ) : orgs.length === 0 ? (
+                            <div className="py-20 text-center border-[3px] border-black">
+                                <Building2 className="w-12 h-12 mx-auto mb-4 text-black/20" />
+                                <p className={`${fontMono} text-black/40 mb-6`}>No tenants created yet</p>
+                                <button 
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="bg-black text-white px-8 py-4 hover:bg-[#7C3AED] transition-colors"
+                                >
+                                    <span className={fontMono}>Create First Tenant</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="border-[3px] border-black">
+                                <table className="w-full">
+                                    <thead className="bg-black text-white">
+                                        <tr>
+                                            <th className={`${fontMono} text-left p-4`}>Name</th>
+                                            <th className={`${fontMono} text-left p-4`}>Slug</th>
+                                            <th className={`${fontMono} text-left p-4`}>Plan</th>
+                                            <th className={`${fontMono} text-left p-4`}>Storage</th>
+                                            <th className={`${fontMono} text-left p-4`}>Status</th>
+                                            <th className={`${fontMono} text-right p-4`}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {orgs.map((org, i) => (
+                                            <tr key={org.id} className={`border-t-[3px] border-black ${i % 2 === 0 ? 'bg-white' : 'bg-[#F5F5F5]'}`}>
+                                                <td className="p-4">
+                                                    <div className="font-bold">{org.name}</div>
+                                                    <div className={`${fontMono} text-black/40`}>{org.id.slice(0, 8)}</div>
+                                                </td>
+                                                <td className={`${fontMono} p-4`}>{org.slug}</td>
+                                                <td className="p-4">
+                                                    <span className={`${fontMono} px-3 py-1 border-[2px] ${
+                                                        org.plan === 'enterprise' ? 'border-purple-500 text-purple-600' :
+                                                        org.plan === 'pro' ? 'border-blue-500 text-blue-600' :
+                                                        'border-black text-black'
+                                                    }`}>
+                                                        {org.plan.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className={fontMono}>{formatBytes(org.storage_used_bytes)} / {org.storage_limit_gb}GB</div>
+                                                    <div className="w-24 h-2 bg-black/10 mt-1">
                                                         <div 
-                                                            className="h-full bg-[var(--accent)] transition-all"
+                                                            className="h-full bg-black"
                                                             style={{ width: `${Math.min((org.storage_used_bytes / (org.storage_limit_gb * 1024 * 1024 * 1024)) * 100, 100)}%` }}
                                                         />
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                {org.is_active ? (
-                                                    <span className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                                                        <CheckCircle2 className="w-3 h-3" /> Active
-                                                    </span>
-                                                ) : (
-                                                    <span className="flex items-center gap-1.5 text-red-400 text-xs font-mono">
-                                                        <XCircle className="w-3 h-3" /> Suspended
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="p-6 text-right">
-                                                <button 
-                                                    onClick={() => toggleTenantStatus(org)}
-                                                    className={`px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest transition-all font-mono ${
-                                                        org.is_active 
-                                                            ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20' 
-                                                            : 'bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20'
-                                                    }`}
-                                                >
-                                                    {org.is_active ? 'Suspend' : 'Activate'}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </section>
-            </div>
-
-            {/* Create Tenant Modal - Matching admin modal style */}
-            {showCreateModal && (
-                <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
-                    <form onSubmit={handleCreateTenant} className="w-full max-w-md backdrop-blur-3xl bg-white/[0.02] p-12 rounded-[32px] border border-white/10 hover:border-white/20 transition-all shadow-2xl">
-                        <div className="flex flex-col items-center mb-12">
-                            <div className="w-16 h-16 bg-gradient-to-br from-[var(--accent)] to-[#6366f1] rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/20">
-                                <Building2 className="w-8 h-8 text-white" />
+                                                </td>
+                                                <td className="p-4">
+                                                    {org.is_active ? (
+                                                        <span className={`${fontMono} text-green-600 flex items-center gap-2`}>
+                                                            <CheckCircle2 className="w-4 h-4" /> ACTIVE
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`${fontMono} text-red-600 flex items-center gap-2`}>
+                                                            <XCircle className="w-4 h-4" /> SUSPENDED
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <button 
+                                                        onClick={() => toggleTenantStatus(org)}
+                                                        className={`${fontMono} px-4 py-2 border-[2px] transition-colors ${
+                                                            org.is_active 
+                                                                ? 'border-red-500 text-red-600 hover:bg-red-500 hover:text-white' 
+                                                                : 'border-green-500 text-green-600 hover:bg-green-500 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        {org.is_active ? 'SUSPEND' : 'ACTIVATE'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                            <h1 className="text-2xl font-light text-white tracking-[0.15em] uppercase">New Studio</h1>
-                            <p className="text-white/30 font-mono text-[10px] mt-3 tracking-widest uppercase">Create Tenant Organization</p>
-                        </div>
+                        )}
+                    </div>
+                </section>
+            </main>
 
-                        <div className="space-y-6">
+            {/* CREATE TENANT MODAL */}
+            {showCreateModal && (
+                <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-8">
+                    <form onSubmit={handleCreateTenant} className="bg-white border-[3px] border-black w-full max-w-lg">
+                        <div className="bg-black text-white p-6">
+                            <span className={fontMono} style={{ color: accentColor }}>New Organization</span>
+                            <h2 className={`${fontDisplay} text-3xl mt-2`}>Create Tenant</h2>
+                        </div>
+                        
+                        <div className="p-8 space-y-6">
                             <div>
-                                <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-3 font-mono">
-                                    Organization Name
-                                </label>
+                                <label className={`${fontMono} text-black/60 block mb-2`}>Organization Name</label>
                                 <input
                                     type="text"
                                     value={newTenantName}
@@ -375,54 +349,53 @@ export default function SuperAdminPage() {
                                         setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-'));
                                     }}
                                     placeholder="Studio ABC"
-                                    className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:border-[var(--accent)]/50 focus:bg-black/60 outline-none transition-all font-light"
+                                    className="w-full border-[3px] border-black p-4 text-lg focus:border-[#7C3AED] outline-none transition-colors"
                                     required
                                     autoFocus
                                 />
                             </div>
                             
                             <div>
-                                <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-3 font-mono">
-                                    URL Slug
-                                </label>
+                                <label className={`${fontMono} text-black/60 block mb-2`}>URL Slug</label>
                                 <input
                                     type="text"
                                     value={newTenantSlug}
                                     onChange={(e) => setNewTenantSlug(e.target.value)}
                                     placeholder="studio-abc"
-                                    className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-6 py-4 text-white font-mono placeholder:text-white/20 focus:border-[var(--accent)]/50 focus:bg-black/60 outline-none transition-all"
+                                    className={`w-full border-[3px] border-black p-4 ${fontMono} focus:border-[#7C3AED] outline-none transition-colors`}
                                     required
                                 />
-                                <p className="text-[10px] text-white/20 mt-2 font-mono">aura.app/{newTenantSlug || 'slug'}</p>
+                                <p className={`${fontMono} text-black/40 mt-2`}>aura.app/{newTenantSlug || 'slug'}</p>
                             </div>
                             
                             {error && (
-                                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-xs font-mono">
-                                    <AlertCircle className="w-4 h-4 shrink-0" />
-                                    {error}
+                                <div className="p-4 border-[3px] border-red-500 text-red-600 flex items-center gap-3">
+                                    <AlertCircle className="w-5 h-5" />
+                                    <span className={fontMono}>{error}</span>
                                 </div>
                             )}
-                            
-                            <div className="flex gap-4 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 h-14 border border-white/10 text-white/40 rounded-xl hover:bg-white/5 hover:text-white transition-all text-xs font-mono uppercase tracking-widest"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={creating}
-                                    className="flex-1 h-14 bg-white text-black font-mono text-xs font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                                >
-                                    {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create"}
-                                </button>
-                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 border-t-[3px] border-black">
+                            <button
+                                type="button"
+                                onClick={() => setShowCreateModal(false)}
+                                className={`${fontMono} p-4 hover:bg-[#F5F5F5] transition-colors`}
+                            >
+                                CANCEL
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={creating}
+                                className={`${fontMono} p-4 bg-black text-white hover:bg-[#7C3AED] transition-colors flex items-center justify-center gap-2`}
+                            >
+                                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                CREATE
+                            </button>
                         </div>
                     </form>
                 </div>
             )}
-        </main>
+        </div>
     );
 }
