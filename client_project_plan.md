@@ -10,39 +10,7 @@
 
 ### System Architecture
 
-```mermaid
-flowchart TB
-    subgraph LP["Landing Page (/)"]
-        LOGIN[Unified Login]
-    end
-    
-    LOGIN --> ROLE{User Role?}
-    
-    ROLE -->|superadmin| SA["/superadmin<br/>Platform Control"]
-    ROLE -->|admin| AD["/admin<br/>Studio Command"]
-    ROLE -->|employee| EM["/capture<br/>Photographer Station"]
-    ROLE -->|guest| GU["/scan<br/>Face Search"]
-    
-    subgraph DB["Supabase Backend"]
-        ORG[(organizations)]
-        PRO[(profiles)]
-        PHO[(photos)]
-        BUN[(bundles)]
-        RLS{{Row Level Security}}
-    end
-    
-    SA --> DB
-    AD --> DB
-    EM --> DB
-    GU --> PHO
-    
-    style LP fill:#000,color:#fff
-    style SA fill:#7C3AED,color:#fff
-    style AD fill:#3B82F6,color:#fff
-    style EM fill:#10B981,color:#fff
-    style GU fill:#F59E0B,color:#fff
-    style RLS fill:#EF4444,color:#fff
-```
+![System Architecture](docs/diagrams/system_architecture.svg)
 
 The Aura Pro platform follows a multi-tenant architecture where all users authenticate through a unified login on the landing page. Based on their role stored in the `profiles` table, users are redirected to their respective portals:
 
@@ -62,39 +30,7 @@ The Aura Pro platform follows a multi-tenant architecture where all users authen
 
 ### Storage Architecture (Ethiopia-Optimized)
 
-```mermaid
-flowchart LR
-    subgraph EVENT["At Event"]
-        CAM[📷 Camera]
-        LAP[💻 Laptop/Phone]
-        TEMP[(Event Temp<br/>Cloud Storage)]
-    end
-    
-    subgraph STUDIO["At Studio"]
-        NAS[🗄️ Local NAS/PC]
-        AGENT[Sync Agent]
-        CLOUD[(Supabase<br/>Cloud)]
-    end
-    
-    CAM -->|"Mobile Data"| LAP
-    LAP -->|"Fast Upload"| TEMP
-    
-    NAS <-->|"Watch"| AGENT
-    AGENT -->|"Delta Sync<br/>WiFi Only"| CLOUD
-    TEMP -->|"Review & Move"| CLOUD
-    
-    subgraph FEATURES["Sync Agent Features"]
-        F1[✓ Offline Queue]
-        F2[✓ Bandwidth Limit]
-        F3[✓ Local Search]
-    end
-    
-    AGENT --- FEATURES
-    
-    style TEMP fill:#F59E0B,color:#000
-    style CLOUD fill:#3B82F6,color:#fff
-    style AGENT fill:#10B981,color:#fff
-```
+![Storage Architecture](docs/diagrams/storage_architecture.svg)
 
 Designed for Ethiopian market conditions where internet connectivity can be unreliable and expensive, the hybrid storage architecture supports multiple workflows:
 
