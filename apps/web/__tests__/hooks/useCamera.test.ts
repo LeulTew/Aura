@@ -77,7 +77,7 @@ describe('useCamera Hook', () => {
     });
 
     expect(result.current.status).toBe('connected');
-    expect(result.current.cameraName).toBe('Mock Sony');
+    expect(result.current.cameraName).toBe('Mock Model');
   });
 
   it('handles disconnect', async () => {

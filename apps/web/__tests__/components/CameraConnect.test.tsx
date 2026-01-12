@@ -29,12 +29,12 @@ describe('CameraConnect', () => {
 
   it('renders connect button when disconnected', () => {
     render(<CameraConnect />);
-    expect(screen.getByText('Connect via USB')).toBeInTheDocument();
+    expect(screen.getByText('Establish Link')).toBeInTheDocument();
   });
 
   it('calls connect on button click', () => {
     render(<CameraConnect />);
-    fireEvent.click(screen.getByText('Connect via USB'));
+    fireEvent.click(screen.getByText('Establish Link'));
     expect(mockConnect).toHaveBeenCalled();
   });
 
@@ -53,6 +53,6 @@ describe('CameraConnect', () => {
     render(<CameraConnect />);
     expect(screen.getByText('Sony A7IV')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
-    expect(screen.getByText('Capture & Sync')).toBeInTheDocument();
+    expect(screen.getByText('Trigger')).toBeInTheDocument();
   });
 });
