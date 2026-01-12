@@ -2,18 +2,13 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, ArrowRight, Loader2, AlertCircle, Shield } from "lucide-react";
+import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function LandingPage() {
-    const [pin, setPin] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    
-    // Exact theme tokens from user's innovative example
-    const accentColor = '#FF4D00'; // Pure High-Contrast Orange
-    const fontDisplay = "font-sans font-[900] uppercase leading-[0.8] tracking-[-0.05em]";
-    const fontMono = "font-mono text-[11px] uppercase tracking-[0.25em] font-bold";
-    const container = "max-w-[1100px] mx-auto w-full px-8";
     
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,159 +17,127 @@ export default function LandingPage() {
         
         try {
             const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-            const res = await fetch(`${backendUrl}/api/admin/login`, {
+            const res = await fetch(`${backendUrl}/api/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ pin })
+                body: JSON.stringify({ email, password })
             });
             const data = await res.json();
             
             if (data.success) {
                 sessionStorage.setItem("admin_token", data.token);
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                } else {
-                    window.location.href = "/admin";
+                if (data.user) {
+                    sessionStorage.setItem("user", JSON.stringify(data.user));
                 }
+                window.location.href = data.redirect || "/admin";
             } else {
-                setError("ACCESS DENIED: INVALID CREDENTIALS");
+                setError(data.error || "Invalid credentials");
             }
         } catch (err) {
-            setError("SYSTEM ERROR: UNABLE TO REACH AUTH CORE");
+            setError("Connection failed. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <main className="min-h-screen bg-black text-white antialiased selection:bg-[#FF4D00] selection:text-white">
-            
-            {/* TOP BAR / LOGO */}
-            <header className="border-b-[3px] border-white py-6">
-                <div className={container + " flex justify-between items-center"}>
-                    <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-white flex items-center justify-center">
-                            <Camera className="w-6 h-6 text-black" />
-                         </div>
-                         <span className={fontMono}>Aura Neural Studio</span>
-                    </div>
-                    <div className={fontMono} style={{ color: accentColor }}>V2.0.4 PRO</div>
+        <main className="min-h-screen bg-white flex">
+            {/* Left: Branding */}
+            <div className="hidden lg:flex lg:w-1/2 bg-black text-white flex-col justify-between p-16">
+                <div>
+                    <h1 className="text-4xl font-bold tracking-tight">Aura</h1>
+                    <p className="text-white/40 mt-2 text-sm">Photo Management Platform</p>
                 </div>
-            </header>
-
-            {/* HERO SECTION - PURE BOLD DESIGN */}
-            <section className="py-24 border-b-[3px] border-white">
-                <div className={container}>
-                    <div className={fontMono} style={{ color: accentColor }}>Unified Studio Environment</div>
-                    <h1 className={`${fontDisplay} text-[clamp(4rem,20vw,14rem)] mt-8 mb-4`}>
-                        AURA<br />PRO.
-                    </h1>
-                    <div className="flex flex-col md:flex-row justify-between items-end gap-12 mt-12">
-                        <h2 className={`${fontDisplay} text-[clamp(2rem,6vw,4rem)] text-white/40 max-w-2xl leading-none`}>
-                            DISTRIBUTED<br />INTELLIGENCE.
+                
+                <div className="space-y-8">
+                    <div className="max-w-md">
+                        <h2 className="text-5xl font-bold leading-tight">
+                            Manage your
+                            <br />studio photos
+                            <br />with ease.
                         </h2>
-                        <div className="text-right">
-                            <div className={fontMono}>System Status</div>
-                            <div className="text-2xl font-black text-green-500 uppercase">Operating</div>
-                        </div>
                     </div>
+                    <p className="text-white/60 max-w-sm leading-relaxed">
+                        Face recognition, instant search, bundle distribution—all in one platform designed for Ethiopian studios.
+                    </p>
                 </div>
-            </section>
-
-            {/* LOGIN SECTION - HIGH CONTRAST SLAB */}
-            <section className="bg-white text-black py-32">
-                <div className={container}>
-                    <div className="max-w-[800px] mb-20">
-                        <span className={fontMono} style={{ color: accentColor }}>Security Gate</span>
-                        <h3 className={`${fontDisplay} text-6xl md:text-8xl mt-6 mb-10`}>AUTHENTICATE.</h3>
-                        <p className="text-2xl font-serif leading-[1.4] text-black/80">
-                            The platform core is restricted to authorized personnel. 
-                            Studio owners, photographers, and platform supervisors must provide valid access credentials 
-                            to initiate an encrypted session.
-                        </p>
+                
+                <div className="text-white/30 text-sm">
+                    © 2026 Aura. All rights reserved.
+                </div>
+            </div>
+            
+            {/* Right: Login Form */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+                <div className="w-full max-w-md">
+                    {/* Mobile Logo */}
+                    <div className="lg:hidden mb-12 text-center">
+                        <h1 className="text-3xl font-bold text-black">Aura</h1>
+                        <p className="text-black/40 mt-1 text-sm">Photo Management Platform</p>
                     </div>
-
-                    {/* LOGIN FORM BOX - NO SHADOWS, NO BLUR */}
-                    <div className="max-w-xl">
-                        <form onSubmit={handleLogin} className="border-[4px] border-black p-1">
-                            <div className="bg-white p-10 border-[1px] border-black/10">
-                                <label className={`${fontMono} text-black mb-6 block`}>Enter Authorization PIN</label>
-                                <input 
-                                    type="password"
-                                    value={pin}
-                                    onChange={(e) => setPin(e.target.value)}
-                                    placeholder="••••"
-                                    className="w-full text-7xl font-[900] tracking-[0.25em] border-none outline-none focus:ring-0 placeholder:text-black/5 bg-transparent mb-12"
-                                    autoFocus
-                                    required
-                                />
-
-                                {error && (
-                                    <div className="p-5 bg-black text-white flex items-center gap-4 mb-8">
-                                        <AlertCircle className="w-6 h-6 shrink-0" style={{ color: accentColor }} />
-                                        <span className={fontMono} style={{ color: '#fff' }}>{error}</span>
-                                    </div>
-                                )}
-
-                                <button 
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full h-24 bg-black text-white flex items-center justify-center gap-6 group hover:bg-[#FF4D00] transition-colors active:scale-[0.99] duration-100"
-                                >
-                                    {loading ? (
-                                        <Loader2 className="w-8 h-8 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <span className={`${fontMono} text-lg font-black`}>Open Secure Link</span>
-                                            <ArrowRight className="w-6 h-6 group-hover:translate-x-3 transition-transform" />
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
+                    
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-semibold text-black">Sign in</h2>
+                        <p className="text-black/50 mt-2">Enter your credentials to access your account.</p>
+                    </div>
+                    
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-black mb-2">
+                                Email
+                            </label>
+                            <input 
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="you@studio.com"
+                                className="w-full h-12 px-4 border border-black/20 rounded-lg focus:border-black focus:ring-1 focus:ring-black outline-none transition-all text-black placeholder:text-black/30"
+                                required
+                            />
+                        </div>
                         
-                        <div className="mt-10 flex items-center gap-4 text-black/40">
-                            <Shield className="w-5 h-5" />
-                            <p className={fontMono}>Encrypted Pipeline: AES-256 + Distributed RLS</p>
+                        <div>
+                            <label className="block text-sm font-medium text-black mb-2">
+                                Password
+                            </label>
+                            <input 
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full h-12 px-4 border border-black/20 rounded-lg focus:border-black focus:ring-1 focus:ring-black outline-none transition-all text-black placeholder:text-black/30"
+                                required
+                            />
                         </div>
-                    </div>
-                </div>
-            </section>
 
-            {/* FOOTER SPECS */}
-            <footer className="py-20 border-t-[3px] border-white">
-                <div className={container + " flex flex-col md:flex-row justify-between items-center gap-12"}>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-12 w-full md:w-auto">
-                        <div>
-                            <div className={fontMono} style={{ color: accentColor }}>Region</div>
-                            <div className="text-xl font-black uppercase">Ethiopia</div>
-                        </div>
-                        <div>
-                            <div className={fontMono} style={{ color: accentColor }}>Sync</div>
-                            <div className="text-xl font-black uppercase">Throttled</div>
-                        </div>
-                        <div>
-                            <div className={fontMono} style={{ color: accentColor }}>Auth</div>
-                            <div className="text-xl font-black uppercase">Role-Base</div>
-                        </div>
-                        <div>
-                            <div className={fontMono} style={{ color: accentColor }}>Model</div>
-                            <div className="text-xl font-black uppercase">Insight-26</div>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className={fontMono}>© 2026 Aura Intelligent Systems</div>
-                        <div className="text-white/20 text-[10px] mt-2 font-mono uppercase tracking-widest">Distributed Ledger Verified</div>
-                    </div>
-                </div>
-            </footer>
+                        {error && (
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700 text-sm">
+                                <AlertCircle className="w-5 h-5 shrink-0" />
+                                <span>{error}</span>
+                            </div>
+                        )}
 
-            <style jsx global>{`
-                @font-face {
-                    font-family: 'AuraMono';
-                    src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
-                }
-            `}</style>
+                        <button 
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-12 bg-black text-white rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-black/90 active:scale-[0.99] transition-all disabled:opacity-50"
+                        >
+                            {loading ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    Sign in
+                                    <ArrowRight className="w-4 h-4" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                    
+                    <p className="mt-8 text-center text-sm text-black/40">
+                        Contact your administrator if you don't have an account.
+                    </p>
+                </div>
+            </div>
         </main>
     );
 }

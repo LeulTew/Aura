@@ -32,12 +32,14 @@ export default function AdminPage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load token
+  // Load token - redirect to landing if not authenticated
   useEffect(() => {
     const t = sessionStorage.getItem("admin_token");
     if (t) {
         setToken(t);
-        // Only fetch photos if token exists to avoid unnecessary calls
+    } else {
+        // No token - redirect to login
+        window.location.href = "/";
     }
   }, []);
 

@@ -420,15 +420,18 @@ async def get_image(
         logger.error(f"Error resizing image: {e}")
         return FileResponse(path)
 
-# Admin & QR Endpoints
+# Admin & Auth Endpoints
 
 class LoginRequest(BaseModel):
-    pin: str
+    email: Optional[str] = None
+    password: Optional[str] = None
+    pin: Optional[str] = None  # Legacy support
 
 class LoginResponse(BaseModel):
     success: bool
     token: Optional[str] = None
-    redirect: Optional[str] = None  # Role-based redirect path
+    redirect: Optional[str] = None
+    user: Optional[dict] = None
     error: Optional[str] = None
 
 class FolderItem(BaseModel):
@@ -450,7 +453,7 @@ class BundleResponse(BaseModel):
     id: str
     url: str
 
-ADMIN_PIN = os.environ.get("ADMIN_PIN", "1234")  # Default for dev
+ADMIN_PIN = os.environ.get("ADMIN_PIN", "1234")  # Legacy fallback
 JWT_SECRET = os.environ.get("JWT_SECRET", "aura_secret_key")
 BUNDLE_FILE = "data/bundles.json"
 
@@ -458,15 +461,14 @@ BUNDLE_FILE = "data/bundles.json"
 ROLE_REDIRECTS = {
     "superadmin": "/superadmin",
     "admin": "/admin",
-    "employee": "/capture"
+    "employee": "/admin/capture"
 }
 
-@app.post("/api/admin/login", response_model=LoginResponse)
-async def admin_login(req: LoginRequest):
+@app.post("/api/auth/login", response_model=LoginResponse)
+async def unified_login(req: LoginRequest):
     """
-    Multi-tenant login endpoint.
-    - PIN auth for backward compat (creates/uses admin profile)
-    - Returns JWT with role, org_id, and redirect path
+    Multi-tenant login with email/password via Supabase Auth.
+    Returns JWT with role, org context, and redirect path.
     """
     import jwt
     from datetime import datetime, timedelta, timezone
@@ -475,52 +477,109 @@ async def admin_login(req: LoginRequest):
     try:
         client = get_client()
         
-        # For MVP: PIN-based login (will be replaced with email/password later)
-        if req.pin == ADMIN_PIN:
-            # Check if we have a profile for this PIN user
-            # For now, we assume PIN login = superadmin or first admin
-            
-            # Try to find existing superadmin profile
-            result = client.table("profiles").select("*").eq("role", "superadmin").limit(1).execute()
-            
-            if result.data and len(result.data) > 0:
-                profile = result.data[0]
-                role = profile.get("role", "admin")
-                org_id = profile.get("org_id")
-                org_slug = None
-                
-                # If org_id exists, fetch org slug
-                if org_id:
-                    org_result = client.table("organizations").select("slug").eq("id", org_id).single().execute()
-                    if org_result.data:
-                        org_slug = org_result.data.get("slug")
-            else:
-                # No profile yet - treat as legacy admin (will be superadmin)
-                role = "admin"
-                org_id = None
-                org_slug = None
-            
-            # Build JWT with all claims
-            token = jwt.encode({
-                "role": role,
-                "org_id": str(org_id) if org_id else None,
-                "org_slug": org_slug,
-                "exp": datetime.now(timezone.utc) + timedelta(days=7)
-            }, JWT_SECRET, algorithm="HS256")
-            
-            redirect_path = ROLE_REDIRECTS.get(role, "/admin")
-            
-            return LoginResponse(
-                success=True, 
-                token=token,
-                redirect=redirect_path
-            )
+        if not req.email or not req.password:
+            return LoginResponse(success=False, error="Email and password required")
         
-        return LoginResponse(success=False, error="Invalid PIN")
+        # 1. Authenticate with Supabase Auth
+        auth_response = client.auth.sign_in_with_password({
+            "email": req.email,
+            "password": req.password
+        })
+        
+        if not auth_response.user:
+            return LoginResponse(success=False, error="Invalid credentials")
+        
+        user_id = auth_response.user.id
+        user_email = auth_response.user.email
+        
+        # 2. Fetch profile with role and org
+        profile_result = client.table("profiles").select("*, organizations(slug, name)").eq("id", user_id).single().execute()
+        
+        if not profile_result.data:
+            return LoginResponse(success=False, error="Profile not found. Contact administrator.")
+        
+        profile = profile_result.data
+        role = profile.get("role", "employee")
+        org_id = profile.get("org_id")
+        org_data = profile.get("organizations")
+        org_slug = org_data.get("slug") if org_data else None
+        org_name = org_data.get("name") if org_data else None
+        
+        # 3. Build custom JWT with full context
+        token = jwt.encode({
+            "sub": str(user_id),
+            "email": user_email,
+            "role": role,
+            "org_id": str(org_id) if org_id else None,
+            "org_slug": org_slug,
+            "org_name": org_name,
+            "display_name": profile.get("display_name"),
+            "exp": datetime.now(timezone.utc) + timedelta(days=7)
+        }, JWT_SECRET, algorithm="HS256")
+        
+        # 4. Determine redirect
+        redirect_path = ROLE_REDIRECTS.get(role, "/admin")
+        
+        return LoginResponse(
+            success=True,
+            token=token,
+            redirect=redirect_path,
+            user={
+                "id": str(user_id),
+                "email": user_email,
+                "role": role,
+                "display_name": profile.get("display_name"),
+                "org_name": org_name
+            }
+        )
         
     except Exception as e:
         logger.error(f"Login error: {e}")
         return LoginResponse(success=False, error="Authentication failed")
+
+
+@app.post("/api/admin/login", response_model=LoginResponse)
+async def legacy_admin_login(req: LoginRequest):
+    """
+    Legacy PIN-based login for backward compatibility.
+    Redirects to /api/auth/login for email/password.
+    """
+    import jwt
+    from datetime import datetime, timedelta, timezone
+    from database_supabase import get_client
+    
+    # If email/password provided, use new auth
+    if req.email and req.password:
+        return await unified_login(req)
+    
+    # Legacy PIN auth
+    if req.pin == ADMIN_PIN:
+        client = get_client()
+        
+        # Check for any superadmin profile
+        result = client.table("profiles").select("*").eq("role", "superadmin").limit(1).execute()
+        
+        if result.data and len(result.data) > 0:
+            profile = result.data[0]
+            role = profile.get("role", "admin")
+            org_id = profile.get("org_id")
+        else:
+            role = "admin"
+            org_id = None
+        
+        token = jwt.encode({
+            "role": role,
+            "org_id": str(org_id) if org_id else None,
+            "exp": datetime.now(timezone.utc) + timedelta(days=7)
+        }, JWT_SECRET, algorithm="HS256")
+        
+        return LoginResponse(
+            success=True,
+            token=token,
+            redirect=ROLE_REDIRECTS.get(role, "/admin")
+        )
+    
+    return LoginResponse(success=False, error="Invalid credentials")
 
 
 @app.get("/api/admin/folders", response_model=FolderResponse)
