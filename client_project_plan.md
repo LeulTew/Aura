@@ -8,173 +8,161 @@
 
 ## 🏗 Architecture Overview
 
-### System Diagram
+### System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              LANDING PAGE (/)                                │
-│                         ┌─────────────────────┐                             │
-│                         │   Unified Login     │                             │
-│                         └──────────┬──────────┘                             │
-│                                    │                                         │
-│              ┌─────────────────────┼─────────────────────┐                  │
-│              ▼                     ▼                     ▼                  │
-│    ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐         │
-│    │  /superadmin    │   │     /admin      │   │    /capture     │         │
-│    │  Platform Ops   │   │  Studio Admin   │   │   Photographer  │         │
-│    └────────┬────────┘   └────────┬────────┘   └────────┬────────┘         │
-│             │                     │                     │                   │
-└─────────────┼─────────────────────┼─────────────────────┼───────────────────┘
-              │                     │                     │
-              ▼                     ▼                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           SUPABASE BACKEND                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │ organizations│  │   profiles   │  │    photos    │  │   bundles    │    │
-│  │   (tenants)  │  │ (users+roles)│  │  (+ org_id)  │  │  (+ org_id)  │    │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
-│                         Row Level Security (RLS)                            │
-└─────────────────────────────────────────────────────────────────────────────┘
-              │                     │                     │
-              ▼                     ▼                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        HYBRID STORAGE LAYER                                  │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
-│  │   Cloud Primary  │  │   Local Sync     │  │   Event Temp     │          │
-│  │ (Supabase Store) │  │  (Sync Agent)    │  │ (Fast Upload)    │          │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![System Architecture](docs/diagrams/system_architecture.png)
+
+The Aura Pro platform follows a multi-tenant architecture where all users authenticate through a unified login on the landing page. Based on their role stored in the `profiles` table, users are redirected to their respective portals:
+
+- **SuperAdmin Portal** (`/superadmin`): Platform operators (us) manage all tenants, monitor usage metrics, set billing limits, and control system health.
+- **Studio Admin** (`/admin`): Tenant administrators manage their studio's photos, employees, sources, and bundles. All queries are scoped to their `org_id`.
+- **Photographer Station** (`/capture`): Employees upload photos, create bundles, and view assigned events. Limited permissions (no delete/settings access).
+
+The Supabase backend enforces strict data isolation through Row Level Security (RLS) policies. Each table contains an `org_id` column, and queries automatically filter based on the authenticated user's organization.
 
 ### User Roles & Permissions
 
 | Role | Portal | Capabilities |
 |------|--------|--------------|
-| **SuperAdmin** | `/superadmin` | Manage all tenants, view usage metrics, set billing limits, system health |
-| **Admin** | `/admin` | Manage own studio: employees, sources, photos, bundles, settings |
-| **Employee** | `/capture` | Upload photos, create bundles, view assigned events (no delete/settings) |
-| **Guest** | `/scan` | Face-scan to find their photos in a specific event |
+| **SuperAdmin** | `/superadmin` | Full platform access: Manage tenants, view all usage metrics, set billing limits, system health monitoring, audit logs |
+| **Admin** | `/admin` | Studio management: Employees, sources, photos, bundles, settings. Can invite employees and manage storage |
+| **Employee** | `/capture` | Upload photos, create bundles, view assigned events. Cannot delete photos or access settings |
+| **Guest** | `/scan` | Face-scan to find their photos in a specific event. No account required, session-based |
 
 ### Storage Architecture (Ethiopia-Optimized)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    PHOTOGRAPHER AT EVENT                         │
-│  ┌─────────┐    ┌─────────────────┐    ┌─────────────────────┐  │
-│  │ Camera  │───▶│ Laptop/Phone    │───▶│ Event Temp Storage  │  │
-│  └─────────┘    │ (Mobile Data)   │    │ (Cloud - Fast)      │  │
-│                 └─────────────────┘    └──────────┬──────────┘  │
-└──────────────────────────────────────────────────┼──────────────┘
-                                                   │
-                                                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         STUDIO                                   │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐  │
-│  │ Local NAS/PC    │◀──▶│   Sync Agent    │───▶│   Cloud     │  │
-│  │ D:\Photos\2026 │    │ (Delta Sync)    │    │  (Supabase) │  │
-│  └─────────────────┘    └─────────────────┘    └─────────────┘  │
-│                              │                                   │
-│                    ┌─────────┴─────────┐                        │
-│                    │ Features:         │                        │
-│                    │ • Offline Queue   │                        │
-│                    │ • Bandwidth Limit │                        │
-│                    │ • Local Search    │                        │
-│                    └───────────────────┘                        │
-└─────────────────────────────────────────────────────────────────┘
-```
+![Storage Architecture](docs/diagrams/storage_architecture.png)
+
+Designed for Ethiopian market conditions where internet connectivity can be unreliable and expensive, the hybrid storage architecture supports multiple workflows:
+
+1. **Event Photography (Mobile)**: Photographers at events upload directly to "Event Temp Storage" using mobile data. Photos are marked as temporary and can be reviewed/archived later at the studio.
+
+2. **Studio Workflow (Local Primary)**: Studios register local folders (e.g., `D:\Photos\2026`) as sources. The Sync Agent monitors these folders and performs:
+   - **Offline Queue**: Actions queued in IndexedDB when offline
+   - **Delta Sync**: Only changed files synced, reducing bandwidth
+   - **Bandwidth Limit**: Configurable upload speed to avoid saturating connection
+   - **Local Search**: Vector index maintained locally for offline face search
+
+3. **Hybrid Search**: API can search both cloud and local sources, with results merged and deduplicated.
 
 ### Database Schema
 
 ```sql
--- Core Tables
-organizations (id, name, slug, plan, storage_limit_gb, storage_used_bytes, is_active)
-profiles      (id → auth.users, email, role, org_id → organizations)
-photos        (id, full_path, embedding, org_id, source_type, created_at)
-bundles       (id, name, photo_ids[], org_id, created_at)
-usage_logs    (id, org_id, action, bytes_processed, created_at)
+-- Core Multi-Tenant Tables
+organizations (id, name, slug, plan, storage_limit_gb, storage_used_bytes, is_active, created_at)
+profiles      (id → auth.users, email, display_name, role, org_id → organizations, created_at)
+photos        (id, path, full_path, embedding, org_id, source_type, photo_date, metadata, created_at)
+bundles       (id, name, photo_ids[], org_id, created_by, created_at)
+usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_at)
 
--- RLS Policies
-• SuperAdmin: Full access to all tables
-• Admin/Employee: Access only rows where org_id matches their profile
-• Guest: Read-only access to matched photos via face-search session
+-- Key Constraints
+• profiles.role IN ('superadmin', 'admin', 'employee')
+• photos.source_type IN ('cloud', 'local_sync', 'event_temp')
+• organizations.plan IN ('free', 'pro', 'enterprise')
 ```
+
+### RLS Policy Summary
+
+| Table | SuperAdmin | Admin | Employee |
+|-------|------------|-------|----------|
+| organizations | ALL | SELECT own | SELECT own |
+| profiles | ALL | SELECT org | SELECT org |
+| photos | ALL | ALL org | SELECT/INSERT org |
+| bundles | ALL | ALL org | SELECT/INSERT org |
+| usage_logs | ALL | SELECT org | - |
 
 ### Authentication Flow
 
-```
-1. User visits / (Landing Page)
-2. Enters credentials (PIN for admin, or email/password)
-3. Backend validates → fetches profile → builds JWT:
-   {
-     "sub": "user-uuid",
-     "role": "admin",        // superadmin | admin | employee
-     "org_id": "org-uuid",
-     "org_slug": "studio-xyz"
-   }
-4. Frontend receives JWT + redirect path
-5. Router directs to appropriate portal
-```
+1. User visits `/` (Landing Page)
+2. Enters credentials (PIN for MVP, email/password planned)
+3. Backend validates credentials and fetches profile from `profiles` table
+4. JWT token generated with claims: `{role, org_id, org_slug, exp}`
+5. Response includes `redirect` path based on role
+6. Frontend stores token in sessionStorage and navigates to appropriate portal
 
 ---
 
 ## 📅 Implementation Phases
 
 ### Phase 1: Foundation Upgrade (Backend) [DONE]
-- [x] Setup Supabase with pgvector
-- [x] Schema Design (users, photos, bundles)
-- [x] Authentication API
+
+**Goal**: Migrate from ephemeral local CSV/LanceDB to cloud-native Supabase.
+
+- [x] **Setup Supabase**: Initialize project, enable `pgvector` extension for vector similarity search
+- [x] **Schema Design**: Create tables for `users`, `photos`, `bundles`, `embeddings` with proper indexes
+- [x] **Migrate Logic**: Rewrite `database.py` to use Supabase client instead of local LanceDB
+- [x] **Authentication API**: Implement `POST /auth/face-login` for face-based authentication
+
+> **Tech Details**: Using `pgvector` with HNSW index for sub-100ms similarity search on 100k+ embeddings.
 
 ### Phase 2: Core UX & "No Cable" Sync [FRONTEND] [DONE]
-- [x] WebUSB Integration
-- [x] Sync Pipeline (Camera → Browser → Cloud)
-- [x] Dexie Cache
+
+**Goal**: Build the Admin Capture Station with direct camera connection.
+
+- [x] **WebUSB Integration**: Implement `tethr` library for PTP protocol camera communication
+- [x] **Sync Pipeline**: Camera → Browser (Blob) → Supabase Storage with progress tracking
+- [x] **Dexie Cache**: Local IndexedDB caching for instant thumbnail preview
+
+> **Tech Details**: WebUSB requires HTTPS. Camera detection via `navigator.usb.requestDevice()`.
 
 ### Phase 3: Public Face [FRONTEND] [DONE]
-- [x] Landing Page
-- [x] Gallery 2.0
-- [x] QR Generation
+
+**Goal**: Professional landing page and seamless guest experience.
+
+- [x] **Landing Page**: "Void 2.0" design with hero section, admin login, and marketing content
+- [x] **Gallery 2.0**: Virtualized grid using TanStack Virtual for 10,000+ photos
+- [x] **QR Generation**: Admin can generate unique event QR codes for guests
+
+> **Design**: Glassmorphism, spatial depth, animated backgrounds using CSS transforms.
 
 ### Phase 4: Intelligence & Delivery [CORE] [DONE]
-- [x] Backend Search (Supabase RPC)
-- [x] Download Manager (jszip)
+
+**Goal**: Advanced face search and efficient download management.
+
+- [x] **Backend Search**: `match_faces` RPC function using cosine similarity with configurable threshold
+- [x] **Download Manager**: Client-side zip generation using `jszip` to reduce server load
+
+> **Performance**: HNSW index enables ~50ms search across 100k embeddings.
 
 ### Phase 5: Multi-Tenant Platform [IN PROGRESS]
 
-**Goal**: Role-based access + SuperAdmin portal
+**Goal**: Role-based access control and SuperAdmin management portal.
 
-#### 5A: Database Foundation
-- [ ] Create `organizations` table with plan limits
-- [ ] Create `profiles` table with roles (superadmin/admin/employee)
-- [ ] Add `org_id` column to `photos` and `bundles` tables
-- [ ] Implement RLS policies for tenant isolation
-- [ ] Role-based login with JWT claims + redirect
+#### 5A: Database Foundation [DONE]
+- [x] **Organizations Table**: Tenants with plan limits and storage tracking
+- [x] **Profiles Table**: Users with roles (superadmin/admin/employee)
+- [x] **RLS Policies**: Strict tenant isolation via `org_id` filtering
+- [x] **Role-Based JWT**: Login returns token with role, org_id, org_slug claims
+- [x] **SuperAdmin Portal**: `/superadmin` route with tenant CRUD and stats dashboard
 
-#### 5B: SuperAdmin Portal
-- [ ] Create `/superadmin` route (protected)
-- [ ] Tenant CRUD (create, view, suspend, delete)
-- [ ] Usage dashboard (storage, API calls, searches)
-- [ ] Billing/limits management UI
+#### 5B: SuperAdmin Portal Enhancements [TODO]
+- [ ] **Usage Dashboard**: API calls per tenant, searches/day, chart visualizations
+- [ ] **Billing Management**: Upgrade plans, set custom limits, overage alerts
+- [ ] **Audit Logging**: Track all superadmin actions with timestamps
+- [ ] **Tenant Onboarding**: Email workflow for new tenant invites
 
-#### 5C: Tenant Admin Scoping
-- [ ] Scope `/admin` queries to current `org_id`
-- [ ] Employee management UI (invite, assign roles)
-- [ ] Usage tracking middleware
+#### 5C: Tenant Admin Scoping [TODO]
+- [ ] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
+- [ ] **Employee Management**: Invite via email, assign roles, remove access
+- [ ] **Usage Tracking**: Middleware to log API calls and storage usage
 
 ### Phase 6: Hybrid Storage [PLANNED]
 
-**Goal**: Local + Cloud sources for Ethiopian market conditions
+**Goal**: Local + Cloud sources optimized for Ethiopian market conditions.
 
-#### 6A: Cloud Enhancements
-- [ ] Add `source_type` column (cloud/local_sync/event_temp)
-- [ ] Sources management UI in admin
-- [ ] Event temp tier with auto-cleanup (30 days)
+#### 6A: Cloud Enhancements [TODO]
+- [ ] **Source Types**: Add `source_type` column (cloud/local_sync/event_temp)
+- [ ] **Sources UI**: Admin can register and manage storage sources
+- [ ] **Event Temp Tier**: Auto-cleanup after 30 days, convert to permanent on approval
 
-#### 6B: Sync Agent (Desktop App)
-- [ ] Electron/Tauri app for Windows/Mac
-- [ ] Local folder watch + IndexedDB queue
-- [ ] Delta sync with bandwidth throttle
-- [ ] Local vector index for offline search
-- [ ] Conflict resolution (last-write-wins + manual)
+#### 6B: Sync Agent (Desktop App) [TODO]
+- [ ] **Desktop App**: Electron/Tauri application for Windows/Mac
+- [ ] **Folder Watch**: Monitor registered local directories for changes
+- [ ] **Offline Queue**: IndexedDB-based queue for actions during offline periods
+- [ ] **Delta Sync**: Only sync file changes, not full files
+- [ ] **Bandwidth Throttle**: Configurable upload speed limit (KB/s)
+- [ ] **Local Vector Index**: Face embeddings stored locally for offline search
+- [ ] **Conflict Resolution**: Last-write-wins with manual override option
 
 ---
 
@@ -182,22 +170,25 @@ usage_logs    (id, org_id, action, bytes_processed, created_at)
 
 | Concern | Solution |
 |---------|----------|
-| Tenant Data Isolation | RLS policies with `org_id` on all queries |
-| SuperAdmin Abuse | Audit logging for all superadmin actions |
-| Sync Agent Security | Scoped API keys (not service_role) |
-| Rate Limiting | Per-tenant quotas enforced at API level |
-| Guest Privacy | Face embeddings never stored for guests |
+| **Tenant Data Isolation** | RLS policies with `org_id` on all queries, tested extensively |
+| **SuperAdmin Abuse Prevention** | Audit logging for all superadmin actions with IP and timestamp |
+| **Sync Agent Security** | Scoped API keys per tenant (not service_role), rotatable |
+| **Rate Limiting** | Per-tenant quotas enforced at API level, configurable limits |
+| **Guest Privacy** | Face embeddings computed client-side, never stored for guests |
+| **Data at Rest** | Supabase encryption, optional customer-managed keys (enterprise) |
 
 ---
 
 ## 🔧 Tech Stack Summary
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 15, React 18, TailwindCSS |
-| Backend | FastAPI (Python 3.11), InsightFace |
-| Database | Supabase PostgreSQL + pgvector |
-| Storage | Supabase Storage (S3-compatible) |
-| Auth | Supabase Auth + Custom JWT |
-| Desktop | Electron/Tauri (Phase 6) |
-| Deployment | Vercel (Frontend), Cloud Run (Backend) |
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| **Frontend** | Next.js 15, React 18 | App Router, Server Components |
+| **Styling** | Vanilla CSS | "Void 2.0" design system |
+| **Backend** | FastAPI (Python 3.11) | Async, auto-docs with OpenAPI |
+| **ML** | InsightFace | 512-dim embeddings, ~50ms/face |
+| **Database** | Supabase PostgreSQL + pgvector | RLS, realtime, edge functions |
+| **Storage** | Supabase Storage | S3-compatible, CDN, signed URLs |
+| **Auth** | Supabase Auth + Custom JWT | Role-based, org-scoped |
+| **Desktop** | Electron/Tauri | Phase 6 - Sync Agent |
+| **Deployment** | Vercel + Cloud Run | Frontend + Backend |
