@@ -85,7 +85,7 @@
   <!-- Arrow Event Temp to Cloud -->
   <path class="line-orange" d="M 340 285 Q 450 285 550 285 Q 600 285 620 285" fill="none"/>
   <polygon fill="#F59E0B" points="620,285 610,280 610,290"/>
-  <text x="480" y="275" class="text-small" fill="#F59E0B">Review & Move</text>
+  <text x="480" y="275" class="text-small" fill="#F59E0B">Review &amp; Move</text>
   
   <!-- Legend -->
   <rect class="box-dark" x="30" y="380" width="840" height="150" rx="8"/>

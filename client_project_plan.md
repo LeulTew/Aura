@@ -10,7 +10,8 @@
 
 ### System Architecture
 
-![System Architecture](docs/diagrams/system_architecture.svg)
+![System Architecture (SVG)](docs/diagrams/system_architecture.svg)
+![System Architecture (PNG)](docs/diagrams/system_architecture.png)
 
 The Aura Pro platform follows a multi-tenant architecture where all users authenticate through a unified login on the landing page. Based on their role stored in the `profiles` table, users are redirected to their respective portals:
 
@@ -30,7 +31,8 @@ The Aura Pro platform follows a multi-tenant architecture where all users authen
 
 ### Storage Architecture (Ethiopia-Optimized)
 
-![Storage Architecture](docs/diagrams/storage_architecture.svg)
+![Storage Architecture (SVG)](docs/diagrams/storage_architecture.svg)
+![Storage Architecture (PNG)](docs/diagrams/storage_architecture.png)
 
 Designed for Ethiopian market conditions where internet connectivity can be unreliable and expensive, the hybrid storage architecture supports multiple workflows:
 
