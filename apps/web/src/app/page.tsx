@@ -2,223 +2,179 @@
 "use client";
 
 import { useState } from "react";
-import Link from 'next/link';
-import { Camera, ArrowRight, Scan, Users, Zap, Shield, Folder, Download } from "lucide-react";
+import { Camera, ArrowRight, Loader2, AlertCircle, Shield } from "lucide-react";
 
 export default function LandingPage() {
-    const [showDemo, setShowDemo] = useState(false);
+    const [pin, setPin] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     
-    // Design tokens - Editorial style
-    const accentColor = '#3B82F6'; // Professional blue
-    const fontDisplay = "font-sans font-black uppercase leading-[0.9] tracking-[-0.03em]";
-    const fontBody = "font-sans text-lg leading-[1.6]";
-    const fontMono = "font-mono text-xs uppercase tracking-[0.15em] font-medium";
-    const container = "max-w-[1100px] mx-auto w-full";
-    const slab = "py-20 px-8 border-b-[3px] border-black";
+    // Exact theme tokens from user's innovative example
+    const accentColor = '#FF4D00'; // Pure High-Contrast Orange
+    const fontDisplay = "font-sans font-[900] uppercase leading-[0.8] tracking-[-0.05em]";
+    const fontMono = "font-mono text-[11px] uppercase tracking-[0.25em] font-bold";
+    const container = "max-w-[1100px] mx-auto w-full px-8";
     
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+        
+        try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const res = await fetch(`${backendUrl}/api/admin/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pin })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                sessionStorage.setItem("admin_token", data.token);
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    window.location.href = "/admin";
+                }
+            } else {
+                setError("ACCESS DENIED: INVALID CREDENTIALS");
+            }
+        } catch (err) {
+            setError("SYSTEM ERROR: UNABLE TO REACH AUTH CORE");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="w-full bg-white text-black antialiased">
-            {/* HEADER */}
-            <header className="fixed top-0 w-full z-50 bg-white border-b-[3px] border-black">
-                <div className={`${container} flex justify-between items-center py-4 px-8`}>
-                    <Link href="/" className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-black flex items-center justify-center">
-                            <Camera className="w-5 h-5 text-white" />
-                        </div>
-                        <span className={`${fontMono} text-sm`}>Aura Pro</span>
-                    </Link>
-                    <nav className="flex items-center gap-8">
-                        <Link href="/scan" className={`${fontMono} text-black/50 hover:text-black transition-colors`}>
-                            Guest Scan
-                        </Link>
-                        <Link href="/admin" className="bg-black text-white px-6 py-3 hover:bg-[#3B82F6] transition-colors">
-                            <span className={fontMono}>Studio Login</span>
-                        </Link>
-                    </nav>
+        <main className="min-h-screen bg-black text-white antialiased selection:bg-[#FF4D00] selection:text-white">
+            
+            {/* TOP BAR / LOGO */}
+            <header className="border-b-[3px] border-white py-6">
+                <div className={container + " flex justify-between items-center"}>
+                    <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-white flex items-center justify-center">
+                            <Camera className="w-6 h-6 text-black" />
+                         </div>
+                         <span className={fontMono}>Aura Neural Studio</span>
+                    </div>
+                    <div className={fontMono} style={{ color: accentColor }}>V2.0.4 PRO</div>
                 </div>
             </header>
 
-            <main className="pt-[72px]">
-                {/* HERO SECTION */}
-                <section className="bg-black text-white py-32 px-8 border-b-[3px] border-white">
-                    <div className={container}>
-                        <div className={fontMono} style={{ color: accentColor }}>Professional Photo Studio Platform</div>
-                        <h1 className={`${fontDisplay} text-[clamp(3rem,12vw,8rem)] mt-6 mb-4`}>
-                            FIND YOUR<br />PHOTOS.
-                        </h1>
-                        <h2 className={`${fontDisplay} text-[clamp(1.2rem,4vw,2.5rem)] text-white/60 mb-12`}>
-                            Instant face-powered delivery for events.
+            {/* HERO SECTION - PURE BOLD DESIGN */}
+            <section className="py-24 border-b-[3px] border-white">
+                <div className={container}>
+                    <div className={fontMono} style={{ color: accentColor }}>Unified Studio Environment</div>
+                    <h1 className={`${fontDisplay} text-[clamp(4rem,20vw,14rem)] mt-8 mb-4`}>
+                        AURA<br />PRO.
+                    </h1>
+                    <div className="flex flex-col md:flex-row justify-between items-end gap-12 mt-12">
+                        <h2 className={`${fontDisplay} text-[clamp(2rem,6vw,4rem)] text-white/40 max-w-2xl leading-none`}>
+                            DISTRIBUTED<br />INTELLIGENCE.
                         </h2>
-                        
-                        <div className="flex flex-col sm:flex-row gap-4 mb-16">
-                            <Link 
-                                href="/scan"
-                                className="bg-white text-black px-10 py-5 flex items-center justify-center gap-3 hover:bg-[#3B82F6] hover:text-white transition-colors group"
-                            >
-                                <Scan className="w-5 h-5" />
-                                <span className={fontMono}>Scan Your Face</span>
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link 
-                                href="/admin"
-                                className="border-[3px] border-white text-white px-10 py-5 flex items-center justify-center gap-3 hover:bg-white hover:text-black transition-colors"
-                            >
-                                <span className={fontMono}>I'm a Photographer</span>
-                            </Link>
-                        </div>
-
-                        {/* Stats bar */}
-                        <div className="border-t border-white/20 pt-6 flex flex-wrap gap-12">
-                            <div>
-                                <div className={`${fontDisplay} text-4xl`}>{"<"}200ms</div>
-                                <div className={`${fontMono} text-white/50 mt-1`}>Face Match Speed</div>
-                            </div>
-                            <div>
-                                <div className={`${fontDisplay} text-4xl`}>100K+</div>
-                                <div className={`${fontMono} text-white/50 mt-1`}>Photos Indexed</div>
-                            </div>
-                            <div>
-                                <div className={`${fontDisplay} text-4xl`}>99.9%</div>
-                                <div className={`${fontMono} text-white/50 mt-1`}>Recognition Accuracy</div>
-                            </div>
+                        <div className="text-right">
+                            <div className={fontMono}>System Status</div>
+                            <div className="text-2xl font-black text-green-500 uppercase">Operating</div>
                         </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                {/* HOW IT WORKS */}
-                <section className={`${slab} bg-white`}>
-                    <div className={container}>
-                        <span className={fontMono} style={{ color: accentColor }}>For Event Guests</span>
-                        <h2 className={`${fontDisplay} text-[clamp(2rem,6vw,4rem)] my-6`}>Find yourself in seconds.</h2>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-[3px] bg-black mt-12">
-                            <div className="bg-white p-10">
-                                <div className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl font-black mb-6">01</div>
-                                <h3 className={`${fontDisplay} text-2xl mb-4`}>SCAN</h3>
-                                <p className={fontBody}>Open the camera on your phone and take a quick selfie. No app download required.</p>
-                            </div>
-                            <div className="bg-white p-10">
-                                <div className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl font-black mb-6">02</div>
-                                <h3 className={`${fontDisplay} text-2xl mb-4`}>MATCH</h3>
-                                <p className={fontBody}>Our AI instantly finds every photo you appear in from the entire event gallery.</p>
-                            </div>
-                            <div className="bg-white p-10">
-                                <div className="w-16 h-16 bg-black text-white flex items-center justify-center text-2xl font-black mb-6">03</div>
-                                <h3 className={`${fontDisplay} text-2xl mb-4`}>DOWNLOAD</h3>
-                                <p className={fontBody}>View, select, and download your photos as a zip file. Done in under 60 seconds.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* FOR PHOTOGRAPHERS - Split Grid */}
-                <section className="grid grid-cols-1 md:grid-cols-2">
-                    <div className="bg-black text-white p-12 md:p-20 border-b-[3px] border-r-0 md:border-r-[3px] border-white">
-                        <span className={fontMono} style={{ color: accentColor }}>For Studios</span>
-                        <h2 className={`${fontDisplay} text-[clamp(2rem,5vw,3.5rem)] my-6`}>Bulk ingest. Zero friction.</h2>
-                        <p className={`${fontBody} text-white/70 mb-8`}>
-                            Upload thousands of photos at once. Our AI processes faces in the background while you focus on your next shoot.
+            {/* LOGIN SECTION - HIGH CONTRAST SLAB */}
+            <section className="bg-white text-black py-32">
+                <div className={container}>
+                    <div className="max-w-[800px] mb-20">
+                        <span className={fontMono} style={{ color: accentColor }}>Security Gate</span>
+                        <h3 className={`${fontDisplay} text-6xl md:text-8xl mt-6 mb-10`}>AUTHENTICATE.</h3>
+                        <p className="text-2xl font-serif leading-[1.4] text-black/80">
+                            The platform core is restricted to authorized personnel. 
+                            Studio owners, photographers, and platform supervisors must provide valid access credentials 
+                            to initiate an encrypted session.
                         </p>
-                        <ul className="space-y-4">
-                            <li className="flex items-center gap-4">
-                                <Folder className="w-6 h-6" style={{ color: accentColor }} />
-                                <span className={fontMono}>Recursive folder upload</span>
-                            </li>
-                            <li className="flex items-center gap-4">
-                                <Zap className="w-6 h-6" style={{ color: accentColor }} />
-                                <span className={fontMono}>Parallel processing</span>
-                            </li>
-                            <li className="flex items-center gap-4">
-                                <Users className="w-6 h-6" style={{ color: accentColor }} />
-                                <span className={fontMono}>Multi-tenant isolation</span>
-                            </li>
-                        </ul>
                     </div>
-                    <div className="bg-[#F5F5F5] p-12 md:p-20 border-b-[3px] border-black">
-                        <span className={fontMono} style={{ color: accentColor }}>Revenue</span>
-                        <h2 className={`${fontDisplay} text-[clamp(2rem,5vw,3.5rem)] my-6`}>Monetize your work.</h2>
-                        <p className={`${fontBody} text-black/70 mb-8`}>
-                            Create shareable bundles with unique download links. Integrate with Stripe for direct payments. Your photos, your rules.
-                        </p>
-                        <ul className="space-y-4">
-                            <li className="flex items-center gap-4">
-                                <Download className="w-6 h-6" style={{ color: accentColor }} />
-                                <span className={fontMono}>Bundle creation</span>
-                            </li>
-                            <li className="flex items-center gap-4">
-                                <Shield className="w-6 h-6" style={{ color: accentColor }} />
-                                <span className={fontMono}>Watermark protection</span>
-                            </li>
-                            <li className="flex items-center gap-4">
-                                <span className="w-6 h-6 flex items-center justify-center font-black" style={{ color: accentColor }}>$</span>
-                                <span className={fontMono}>Stripe integration</span>
-                            </li>
-                        </ul>
-                    </div>
-                </section>
 
-                {/* TECH SPECS */}
-                <section className={`${slab} bg-white`}>
-                    <div className={container}>
-                        <span className={fontMono}>The Stack</span>
-                        <h2 className={`${fontDisplay} text-[clamp(2rem,5vw,3rem)] my-6`}>Built for scale.</h2>
+                    {/* LOGIN FORM BOX - NO SHADOWS, NO BLUR */}
+                    <div className="max-w-xl">
+                        <form onSubmit={handleLogin} className="border-[4px] border-black p-1">
+                            <div className="bg-white p-10 border-[1px] border-black/10">
+                                <label className={`${fontMono} text-black mb-6 block`}>Enter Authorization PIN</label>
+                                <input 
+                                    type="password"
+                                    value={pin}
+                                    onChange={(e) => setPin(e.target.value)}
+                                    placeholder="••••"
+                                    className="w-full text-7xl font-[900] tracking-[0.25em] border-none outline-none focus:ring-0 placeholder:text-black/5 bg-transparent mb-12"
+                                    autoFocus
+                                    required
+                                />
+
+                                {error && (
+                                    <div className="p-5 bg-black text-white flex items-center gap-4 mb-8">
+                                        <AlertCircle className="w-6 h-6 shrink-0" style={{ color: accentColor }} />
+                                        <span className={fontMono} style={{ color: '#fff' }}>{error}</span>
+                                    </div>
+                                )}
+
+                                <button 
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full h-24 bg-black text-white flex items-center justify-center gap-6 group hover:bg-[#FF4D00] transition-colors active:scale-[0.99] duration-100"
+                                >
+                                    {loading ? (
+                                        <Loader2 className="w-8 h-8 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span className={`${fontMono} text-lg font-black`}>Open Secure Link</span>
+                                            <ArrowRight className="w-6 h-6 group-hover:translate-x-3 transition-transform" />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-[3px] bg-black mt-8">
-                            {[
-                                { label: "Frontend", value: "Next.js 15" },
-                                { label: "Backend", value: "FastAPI" },
-                                { label: "Database", value: "Supabase" },
-                                { label: "ML", value: "InsightFace" },
-                            ].map((item, i) => (
-                                <div key={i} className="bg-white p-6 text-center">
-                                    <div className={`${fontMono} text-black/40 mb-2`}>{item.label}</div>
-                                    <div className={`${fontDisplay} text-xl`}>{item.value}</div>
-                                </div>
-                            ))}
+                        <div className="mt-10 flex items-center gap-4 text-black/40">
+                            <Shield className="w-5 h-5" />
+                            <p className={fontMono}>Encrypted Pipeline: AES-256 + Distributed RLS</p>
                         </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                {/* CTA */}
-                <section className="py-32 px-8 text-center" style={{ backgroundColor: accentColor }}>
-                    <div className={container}>
-                        <span className={`${fontMono} text-white/80`}>Get Started</span>
-                        <h2 className={`${fontDisplay} text-[clamp(2.5rem,8vw,5rem)] text-white mt-4 mb-8`}>
-                            READY TO<br />TRANSFORM?
-                        </h2>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Link 
-                                href="/admin"
-                                className="bg-white text-black px-12 py-6 hover:bg-black hover:text-white transition-colors inline-flex items-center justify-center gap-3"
-                            >
-                                <span className={fontMono}>Launch Studio Portal</span>
-                                <ArrowRight className="w-5 h-5" />
-                            </Link>
-                            <Link 
-                                href="/scan"
-                                className="border-[3px] border-white text-white px-12 py-6 hover:bg-white hover:text-black transition-colors inline-flex items-center justify-center"
-                            >
-                                <span className={fontMono}>Try Guest Demo</span>
-                            </Link>
+            {/* FOOTER SPECS */}
+            <footer className="py-20 border-t-[3px] border-white">
+                <div className={container + " flex flex-col md:flex-row justify-between items-center gap-12"}>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-12 w-full md:w-auto">
+                        <div>
+                            <div className={fontMono} style={{ color: accentColor }}>Region</div>
+                            <div className="text-xl font-black uppercase">Ethiopia</div>
+                        </div>
+                        <div>
+                            <div className={fontMono} style={{ color: accentColor }}>Sync</div>
+                            <div className="text-xl font-black uppercase">Throttled</div>
+                        </div>
+                        <div>
+                            <div className={fontMono} style={{ color: accentColor }}>Auth</div>
+                            <div className="text-xl font-black uppercase">Role-Base</div>
+                        </div>
+                        <div>
+                            <div className={fontMono} style={{ color: accentColor }}>Model</div>
+                            <div className="text-xl font-black uppercase">Insight-26</div>
                         </div>
                     </div>
-                </section>
-            </main>
-
-            {/* FOOTER */}
-            <footer className="bg-black text-white py-16 px-8">
-                <div className={`${container} flex flex-col md:flex-row justify-between items-center gap-8`}>
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white flex items-center justify-center">
-                            <Camera className="w-5 h-5 text-black" />
-                        </div>
-                        <span className={fontMono}>Aura Pro</span>
-                    </div>
-                    <div className={`${fontMono} text-white/40`}>
-                        © 2026 Aura Intelligent Systems. Ethiopia.
+                    <div className="text-right">
+                        <div className={fontMono}>© 2026 Aura Intelligent Systems</div>
+                        <div className="text-white/20 text-[10px] mt-2 font-mono uppercase tracking-widest">Distributed Ledger Verified</div>
                     </div>
                 </div>
             </footer>
-        </div>
+
+            <style jsx global>{`
+                @font-face {
+                    font-family: 'AuraMono';
+                    src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
+                }
+            `}</style>
+        </main>
     );
 }
