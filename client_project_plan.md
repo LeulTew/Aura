@@ -356,7 +356,7 @@ graph TD
     B -->|Cloud| D[Move to Local Trash]
     C --> E[Retain 30 days in Trash]
     D --> E
-    E --> F{User Action?}
+    E --> F{User Action?}m
     F -->|Restore| G[Move back to original location]
     F -->|Permanent Delete| H[Hard delete from both locations]
     F -->|30 days elapsed| H
