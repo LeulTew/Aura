@@ -143,7 +143,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Tenant Onboarding**: Email workflow for new tenant invites
 
 #### 5C: Tenant Admin Scoping [TODO]
-- [ ] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
+- [x] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
 - [ ] **Employee Management**: Invite via email, assign roles, remove access
 - [x] **Usage Tracking**: Middleware implemented in main.py (log_usage, update_storage_stats)
 
@@ -193,3 +193,226 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 | **Auth** | Supabase Auth + Custom JWT | Role-based, org-scoped |
 | **Desktop** | Electron/Tauri | Phase 6 - Sync Agent |
 | **Deployment** | Vercel + Cloud Run | Frontend + Backend |
+---
+
+## 🔐 Phase 5.5: User & Access Management Workflows [NEW]
+
+> **Goal**: Define detailed end-to-end workflows for platform governance, user management, and access control.
+
+### SuperAdmin Workflow
+
+```mermaid
+sequenceDiagram
+    SuperAdmin->>Aura: Login at /login
+    Aura-->>SuperAdmin: Redirect to /superadmin
+    
+    Note over SuperAdmin: Tenant Provisioning
+    SuperAdmin->>Aura: Create New Organization
+    Aura->>DB: INSERT organizations
+    SuperAdmin->>Aura: Create Primary Admin for Org
+    Aura->>DB: INSERT profiles (role=admin, org_id)
+    Aura->>Email: Send invite to admin@tenant.com
+    
+    Note over SuperAdmin: Tenant Management
+    SuperAdmin->>Aura: View Usage Dashboard
+    Aura-->>SuperAdmin: Storage, API calls, searches per tenant
+    SuperAdmin->>Aura: Edit Tenant (Plan/Storage Limit)
+    SuperAdmin->>Aura: Suspend/Activate Tenant
+```
+
+**SuperAdmin Capabilities**:
+| Action | Endpoint | Notes |
+|--------|----------|-------|
+| Create Organization | `/superadmin` → Create Tenant | Sets slug, initial plan, storage limit |
+| Create Primary Admin | `/superadmin` → Add Admin | Links to organization, triggers invite |
+| Edit Tenant Config | `/superadmin` → Edit Modal | Plan upgrade, storage limit change |
+| Suspend/Activate | `/superadmin` → Toggle | Revokes/grants all org access |
+| View Platform Stats | `/superadmin` Dashboard | Total tenants, photos, storage |
+| View Activity Feed | `/superadmin` Sidebar | Real-time usage logs |
+
+### Tenant Admin Workflow
+
+```mermaid
+sequenceDiagram
+    TenantAdmin->>Aura: Accept Invite Email
+    TenantAdmin->>Aura: Set Password
+    TenantAdmin->>Aura: Login at /login
+    Aura-->>TenantAdmin: Redirect to /admin
+    
+    Note over TenantAdmin: Employee Management
+    TenantAdmin->>Aura: Invite Employee
+    Aura->>DB: INSERT profiles (role=employee, org_id)
+    Aura->>Email: Send credentials/setup link
+    
+    Note over TenantAdmin: Photo Management
+    TenantAdmin->>Aura: Upload Photos (Drag/Drop)
+    TenantAdmin->>Aura: Connect Folder Source (Sync Agent)
+    TenantAdmin->>Aura: Create Bundles for Guests
+    TenantAdmin->>Aura: Generate QR Code for Event
+```
+
+**Tenant Admin Capabilities**:
+| Action | Location | Notes |
+|--------|----------|-------|
+| Invite Employee | `/admin/team` (Planned) | Email with setup link |
+| Assign Role | `/admin/team` (Planned) | employee/photographer |
+| Remove Employee | `/admin/team` (Planned) | Revokes access, retains data |
+| Connect Folder | `/admin/sources` (Planned) | Via Sync Agent |
+| Revoke Folder | `/admin/sources` (Planned) | Stops sync, optionally delete cloud copy |
+| View Usage | `/admin` Dashboard | Storage, uploads, searches |
+
+### Employee Workflow
+
+1. **Receive Credentials**: Admin sends email with login info
+2. **Login**: Access `/login` with provided credentials
+3. **Capture Photos**: Access `/admin/capture` for camera connection
+4. **Upload Photos**: Drag-and-drop to org folder
+5. **Search**: Limited to org photos only (RLS enforced)
+
+---
+
+## 📂 Server Folder & Storage Architecture [NEW]
+
+> **Goal**: Define the storage structure on the cloud server for optimal organization, sync compatibility, and future scalability.
+
+### Cloud Storage Path Convention
+
+```
+supabase-storage/
+└── photos/
+    └── {org_slug}/
+        └── {year}/
+            └── {event_or_folder_name}/
+                ├── originals/
+                │   └── IMG_0001.jpg
+                └── optimized/
+                    ├── full/        (2000px max dimension)
+                    │   └── IMG_0001.webp
+                    └── thumbs/      (400px max dimension)
+                        └── IMG_0001.webp
+```
+
+### Path Breakdown
+
+| Segment             | Purpose                 | Example          |
+| ------------------- | ----------------------- | ---------------- |
+| `{org_slug}`        | Tenant isolation        | `studio-abc`     |
+| `{year}`            | Time-based partitioning | `2026`           |
+| `{event_or_folder}` | Logical grouping        | `wedding-jan-15` |
+| `originals/`        | RAW/Original uploads    | Full-res JPG/RAW |
+| `optimized/full/`   | Web-optimized           | 2000px WebP      |
+| `optimized/thumbs/` | Thumbnails              | 400px WebP       |
+
+### Benefits
+
+1. **Sync Compatibility**: Mirrors local folder structure for easy sync agent mapping
+2. **Tenant Isolation**: `org_slug` as root prevents cross-tenant access
+3. **Performance**: Pre-generated thumbnails for instant gallery loading
+4. **Future-Proof**: Structured for CDN integration, lifecycle policies, tiered storage
+
+---
+
+## 🔄 Phase 6: Enhanced Bidirectional Sync Specification [UPDATED]
+
+> **Goal**: Bidirectional sync between local studio servers and cloud, with robust conflict handling and data safety.
+
+### 6A: Cloud Storage Enhancements [UPDATED]
+
+- [ ] **Source Types**: `source_type` column already in schema (cloud/local_sync/event_temp)
+- [ ] **Sources Management UI**: `/admin/sources` for registering local folders
+- [ ] **Event Temp Auto-Cleanup**: 30-day TTL with admin approval for permanence
+- [ ] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
+
+### 6B: Bidirectional Sync Agent [NEW SPECIFICATION]
+
+#### Core Features
+
+| Feature                | Description                               |
+| ---------------------- | ----------------------------------------- |
+| **Upload Sync**        | Local changes → Cloud (existing behavior) |
+| **Download Sync**      | Cloud changes → Local (NEW)               |
+| **Folder Sync Toggle** | Per-folder setting: "Always sync latest"  |
+| **Selective Sync**     | Choose specific folders to sync (not all) |
+| **Conflict Detection** | Hash comparison before overwrite          |
+
+#### Sync Modes
+
+1. **Upload-Only Mode** (Default)
+   - Local folder → Cloud
+   - Ideal for event photographers uploading to studio
+2. **Download-Only Mode**
+   - Cloud → Local folder
+   - Ideal for backup to local NAS
+3. **Bidirectional Mode** (Full Sync)
+   - Changes in either direction synced
+   - Requires conflict resolution strategy
+
+#### Deletion Handling (CRITICAL)
+
+```mermaid
+graph TD
+    A[File Deleted] --> B{Deletion Source?}
+    B -->|Local| C[Move to Cloud Trash]
+    B -->|Cloud| D[Move to Local Trash]
+    C --> E[Retain 30 days in Trash]
+    D --> E
+    E --> F{User Action?}
+    F -->|Restore| G[Move back to original location]
+    F -->|Permanent Delete| H[Hard delete from both locations]
+    F -->|30 days elapsed| H
+```
+
+**Deletion Rules**:
+| Scenario | Action | Reversible |
+|----------|--------|------------|
+| Local delete | Cloud copy moved to `.trash/` | Yes (30 days) |
+| Cloud delete | Local copy moved to `.aura_trash/` | Yes (30 days) |
+| Folder delete | Mark folder as "deleted", not immediate hard delete | Yes (admin restore) |
+| Conflict on restore | Rename restored file with timestamp suffix | - |
+
+#### Conflict Resolution
+
+| Scenario                                | Strategy                            | User Action            |
+| --------------------------------------- | ----------------------------------- | ---------------------- |
+| Same file modified both sides           | Last-write-wins (configurable)      | Can choose "keep both" |
+| New file added both sides (same name)   | Keep both with suffix               | -                      |
+| File deleted locally, modified on cloud | Cloud version wins (saved to local) | Can restore local      |
+| File modified locally, deleted on cloud | Local version wins (re-uploaded)    | Can confirm delete     |
+
+#### Sync Agent Technical Spec
+
+```yaml
+# sync_config.yaml
+sync_agent:
+  version: "1.0.0"
+  org_id: "uuid"
+  api_key: "tenant_scoped_key" # Not service_role
+
+  folders:
+    - local_path: "D:\\Photos\\2026\\Weddings"
+      cloud_path: "studio-abc/2026/weddings"
+      mode: "bidirectional"
+      sync_interval_minutes: 30
+
+    - local_path: "D:\\Photos\\2026\\Events"
+      cloud_path: "studio-abc/2026/events"
+      mode: "upload-only"
+      sync_interval_minutes: 60
+
+  settings:
+    bandwidth_limit_kbps: 5000
+    trash_retention_days: 30
+    conflict_strategy: "last-write-wins"
+    optimize_on_upload: true
+    sync_metadata: true
+```
+
+### 6C: Data Safety & Backup [NEW]
+
+| Feature              | Implementation                                     |
+| -------------------- | -------------------------------------------------- |
+| **Trash Folder**     | Cloud: `{org_slug}/.trash/`, Local: `.aura_trash/` |
+| **Retention Period** | 30 days default, configurable per tenant           |
+| **Restore API**      | `POST /api/trash/restore/{id}`                     |
+| **Permanent Delete** | Requires admin confirmation + audit log            |
+| **Backup Export**    | Admin can export all org data as ZIP (planned)     |

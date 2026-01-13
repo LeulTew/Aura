@@ -14,8 +14,27 @@ interface PhotoRecord {
   metadata?: any;
 }
 
+// Helper to decode JWT and extract claims
+function parseJwt(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
 export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,29 +51,43 @@ export default function AdminPage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load token - redirect to landing if not authenticated
+  // Load token and extract org_id from JWT
   useEffect(() => {
     const t = sessionStorage.getItem("admin_token");
     if (t) {
         setToken(t);
+        const claims = parseJwt(t);
+        if (claims) {
+            setOrgId(claims.org_id || null);
+            setUserRole(claims.role || null);
+        }
     } else {
         // No token - redirect to login
-        window.location.href = "/";
+        window.location.href = "/login";
     }
   }, []);
 
   // Fetch only when token is resolved
   useEffect(() => {
-    if (token) fetchPhotos();
-  }, [token]);
+    if (token && orgId) fetchPhotos();
+  }, [token, orgId]);
 
   const fetchPhotos = async () => {
     setLoading(true);
     try {
-        const { data, error } = await supabase
+        // Build query with org_id scoping for tenant isolation
+        let query = supabase
             .from('photos')
             .select('*')
             .order('created_at', { ascending: false });
+        
+        // If user has an org_id, filter by it (tenant isolation)
+        // SuperAdmins (org_id = null) see all photos
+        if (orgId) {
+            query = query.eq('org_id', orgId);
+        }
+            
+        const { data, error } = await query;
             
         if (error) throw error;
         setPhotos(data || []);
