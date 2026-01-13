@@ -142,9 +142,9 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Audit Logging**: Track all superadmin actions with timestamps
 - [ ] **Tenant Onboarding**: Email workflow for new tenant invites
 
-#### 5C: Tenant Admin Scoping [TODO]
+#### 5C: Tenant Admin Scoping [DONE]
 - [x] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
-- [ ] **Employee Management**: Invite via email, assign roles, remove access
+- [x] **Employee Management**: /admin/team page with invite modal, role assignment, member removal
 - [x] **Usage Tracking**: Middleware implemented in main.py (log_usage, update_storage_stats)
 
 ### Phase 6: Hybrid Storage [PLANNED]
