@@ -136,8 +136,8 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Role-Based JWT**: Login returns token with role, org_id, org_slug claims
 - [x] **SuperAdmin Portal**: `/superadmin` route with tenant CRUD and stats dashboard
 
-#### 5B: SuperAdmin Portal Enhancements [TODO]
-- [ ] **Usage Dashboard**: API calls per tenant, searches/day, chart visualizations
+#### 5B: SuperAdmin Portal Enhancements [PARTIAL]
+- [x] **Usage Dashboard**: Activity feed implemented, chart visualizations pending
 - [ ] **Billing Management**: Upgrade plans, set custom limits, overage alerts
 - [ ] **Audit Logging**: Track all superadmin actions with timestamps
 - [ ] **Tenant Onboarding**: Email workflow for new tenant invites
@@ -145,7 +145,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 #### 5C: Tenant Admin Scoping [TODO]
 - [ ] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
 - [ ] **Employee Management**: Invite via email, assign roles, remove access
-- [ ] **Usage Tracking**: Middleware to log API calls and storage usage
+- [x] **Usage Tracking**: Middleware implemented in main.py (log_usage, update_storage_stats)
 
 ### Phase 6: Hybrid Storage [PLANNED]
 
