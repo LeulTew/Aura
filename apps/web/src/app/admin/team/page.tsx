@@ -166,89 +166,94 @@ export default function TeamPage() {
     }
 
     return (
-        <main className="min-h-screen bg-black text-white antialiased">
+        <main className="min-h-screen bg-black text-white antialiased selection:bg-[#7C3AED] selection:text-white">
             {/* Header */}
-            <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-8 py-6 flex justify-between items-center">
-                    <div className="flex items-center gap-6">
+            <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50 py-4">
+                <div className="max-w-[1400px] mx-auto px-8 flex justify-between items-center">
+                    <div className="flex items-center gap-10">
                         <Link 
                             href="/admin"
-                            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors group"
                         >
-                            <ArrowLeft className="w-4 h-4" />
+                            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
                             <span className={fontMono}>Back</span>
                         </Link>
                         <div className="w-px h-6 bg-white/10" />
-                        <div className="flex items-center gap-3">
-                            <Users className="w-5 h-5 text-[#7C3AED]" />
-                            <span className={`${fontDisplay} text-xl`}>Team</span>
+                        <div className="flex items-center gap-4">
+                            <div className="w-8 h-8 bg-white flex items-center justify-center">
+                                <Users className="w-5 h-5 text-black" />
+                            </div>
+                            <h1 className={`${fontDisplay} text-3xl`}>Team Management</h1>
                         </div>
                     </div>
                     
                     <button
                         onClick={() => setShowInviteModal(true)}
-                        className="flex items-center gap-2 bg-[#7C3AED] text-white px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-[#6D28D9] transition-colors"
+                        className="bg-white text-black px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#7C3AED] hover:text-white transition-all duration-300"
                     >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 inline-block mr-2 -mt-0.5" />
                         Add Member
                     </button>
                 </div>
             </header>
 
             {/* Alerts */}
-            <div className="max-w-6xl mx-auto px-8 mt-8">
+            <div className="max-w-[1400px] mx-auto px-8 mt-12">
                 {error && (
-                    <div className="mb-6 p-4 border-2 border-red-500/50 bg-red-500/10 flex items-center gap-4 text-red-400">
+                    <div className="mb-6 p-6 border border-red-500/50 bg-red-500/5 flex items-center gap-4 text-red-500">
                         <AlertCircle className="w-5 h-5 shrink-0" />
-                        <span className={fontMono}>{error}</span>
+                        <span className={`${fontMono} tracking-[0.1em]`}>{error}</span>
                     </div>
                 )}
                 {success && (
-                    <div className="mb-6 p-4 border-2 border-green-500/50 bg-green-500/10 flex items-center gap-4 text-green-400">
+                    <div className="mb-6 p-6 border border-green-500/50 bg-green-500/5 flex items-center gap-4 text-green-500">
                         <CheckCircle2 className="w-5 h-5 shrink-0" />
-                        <span className={fontMono}>{success}</span>
+                        <span className={`${fontMono} tracking-[0.1em]`}>{success}</span>
                     </div>
                 )}
             </div>
 
             {/* Team Table */}
-            <div className="max-w-6xl mx-auto px-8 py-8">
-                <div className="border border-white/10 bg-[#050505]">
+            <div className="max-w-[1400px] mx-auto px-8 py-12">
+                <div className="border border-white/5 bg-[#050505]">
                     {/* Table Header */}
-                    <div className="grid grid-cols-4 gap-4 p-6 border-b border-white/10 bg-black/50">
-                        <div className={`${fontMono} text-white/40`}>Member</div>
-                        <div className={`${fontMono} text-white/40`}>Email</div>
-                        <div className={`${fontMono} text-white/40`}>Role</div>
-                        <div className={`${fontMono} text-white/40 text-right`}>Actions</div>
+                    <div className="grid grid-cols-[1.5fr_1.5fr_1fr_0.5fr] gap-4 p-8 border-b border-white/10 bg-black/50">
+                        <div className={`${fontMono} text-white/60`}>Member</div>
+                        <div className={`${fontMono} text-white/60`}>Email</div>
+                        <div className={`${fontMono} text-white/60`}>Access Level</div>
+                        <div className={`${fontMono} text-white/60 text-right`}>Options</div>
                     </div>
                     
                     {/* Table Body */}
                     {members.length === 0 ? (
-                        <div className="p-12 text-center">
-                            <Users className="w-12 h-12 text-white/10 mx-auto mb-4" />
-                            <p className={`${fontMono} text-white/40`}>No team members yet</p>
-                            <p className="text-white/20 text-sm mt-2">Click "Add Member" to invite your first employee</p>
+                        <div className="p-24 text-center">
+                            <Users className="w-16 h-16 text-white/5 mx-auto mb-6" />
+                            <p className={`${fontMono} text-white/40 mb-2`}>No personnel found</p>
+                            <p className="text-white/20 text-sm">Add a team member to grant access to your studio database.</p>
                         </div>
                     ) : (
                         members.map((member) => (
                             <div 
                                 key={member.id}
-                                className="grid grid-cols-4 gap-4 p-6 border-b border-white/5 hover:bg-white/5 transition-colors"
+                                className="grid grid-cols-[1.5fr_1.5fr_1fr_0.5fr] gap-4 p-8 border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-[#7C3AED]/20 border border-[#7C3AED]/30 flex items-center justify-center">
-                                        <Camera className="w-5 h-5 text-[#7C3AED]" />
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[#7C3AED]/40 transition-colors">
+                                        <Camera className="w-5 h-5 text-white/40 group-hover:text-[#7C3AED] transition-colors" />
                                     </div>
-                                    <span className="font-medium">{member.display_name || 'Unnamed'}</span>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-lg leading-none mb-1">{member.display_name || 'Anonymous User'}</span>
+                                        <span className={`${fontMono} text-[10px] text-white/30`}>ID: {member.id.substring(0, 8)}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center text-white/60 font-mono text-sm">
+                                <div className="flex items-center text-white/60 font-mono text-sm tracking-tight">
                                     {member.email}
                                 </div>
                                 <div className="flex items-center">
-                                    <span className={`px-3 py-1 text-xs font-bold uppercase tracking-widest ${
+                                    <span className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] border ${
                                         member.role === 'admin' 
-                                            ? 'bg-[#7C3AED]/20 text-[#7C3AED] border border-[#7C3AED]/30' 
-                                            : 'bg-white/10 text-white/60 border border-white/10'
+                                            ? 'bg-white text-black border-white' 
+                                            : 'bg-transparent text-white/60 border-white/20'
                                     }`}>
                                         {member.role}
                                     </span>
@@ -257,7 +262,8 @@ export default function TeamPage() {
                                     <button
                                         onClick={() => handleRemoveMember(member.id)}
                                         disabled={deletingId === member.id}
-                                        className="p-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                        className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                                        title="Revoke Access"
                                     >
                                         {deletingId === member.id ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -274,86 +280,91 @@ export default function TeamPage() {
 
             {/* Invite Modal */}
             {showInviteModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-8">
-                    <div className="bg-[#0A0A0A] border border-white/10 max-w-md w-full p-8">
-                        <h2 className={`${fontDisplay} text-2xl mb-2`}>Add Team Member</h2>
-                        <p className="text-white/40 font-mono text-xs mb-8">
-                            INVITE A NEW MEMBER TO YOUR ORGANIZATION
-                        </p>
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 p-8 animate-in fade-in duration-300">
+                    <div className="bg-black border border-white/10 max-w-lg w-full p-12 relative overflow-hidden">
+                        {/* Decorative Background Element */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#7C3AED]/5 blur-3xl rounded-full -mr-16 -mt-16" />
                         
-                        <form onSubmit={handleInvite} className="space-y-6">
-                            <div>
-                                <label className={`${fontMono} text-white/40 block mb-3`}>
-                                    Email Address
-                                </label>
-                                <input
-                                    type="email"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                    placeholder="employee@studio.com"
-                                    className="w-full h-14 px-5 bg-transparent border-2 border-white/10 focus:border-[#7C3AED] outline-none transition-all text-white placeholder:text-white/20 font-mono"
-                                    required
-                                />
-                            </div>
+                        <div className="relative z-10">
+                            <h2 className={`${fontDisplay} text-4xl mb-2`}>Add Personnel</h2>
+                            <p className={`${fontMono} text-white/40 mb-12`}>
+                                Grant access to the studio's digital assets.
+                            </p>
                             
-                            <div>
-                                <label className={`${fontMono} text-white/40 block mb-3`}>
-                                    Role
-                                </label>
-                                <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleInvite} className="space-y-10">
+                                <div>
+                                    <label className={`${fontMono} text-white/60 block mb-4`}>
+                                        Identification (Email)
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={inviteEmail}
+                                        onChange={(e) => setInviteEmail(e.target.value)}
+                                        placeholder="employee@studio.aura"
+                                        className="w-full h-16 px-6 bg-white/[0.03] border border-white/10 focus:border-[#7C3AED] outline-none transition-all text-white placeholder:text-white/10 font-mono text-sm"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className={`${fontMono} text-white/60 block mb-4`}>
+                                        Permissions Tier
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <button
+                                            type="button"
+                                            onClick={() => setInviteRole('employee')}
+                                            className={`p-6 border transition-all text-left group ${
+                                                inviteRole === 'employee'
+                                                    ? 'border-white bg-white text-black'
+                                                    : 'border-white/10 hover:border-white/30 bg-white/5'
+                                            }`}
+                                        >
+                                            <Camera className={`w-6 h-6 mb-3 ${inviteRole === 'employee' ? 'text-black' : 'text-white/40'}`} />
+                                            <div className="font-black uppercase tracking-tighter text-lg leading-none">Employee</div>
+                                            <div className={`text-[10px] uppercase tracking-widest mt-2 ${inviteRole === 'employee' ? 'text-black/60' : 'text-white/30'}`}>Capture & Sync</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setInviteRole('admin')}
+                                            className={`p-6 border transition-all text-left group ${
+                                                inviteRole === 'admin'
+                                                    ? 'border-[#7C3AED] bg-[#7C3AED] text-white'
+                                                    : 'border-white/10 hover:border-white/30 bg-white/5'
+                                            }`}
+                                        >
+                                            <Shield className={`w-6 h-6 mb-3 ${inviteRole === 'admin' ? 'text-white' : 'text-white/40'}`} />
+                                            <div className="font-black uppercase tracking-tighter text-lg leading-none">Admin</div>
+                                            <div className={`text-[10px] uppercase tracking-widest mt-2 ${inviteRole === 'admin' ? 'text-white/60' : 'text-white/30'}`}>System Control</div>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4 pt-6">
                                     <button
                                         type="button"
-                                        onClick={() => setInviteRole('employee')}
-                                        className={`p-4 border-2 text-left transition-all ${
-                                            inviteRole === 'employee'
-                                                ? 'border-[#7C3AED] bg-[#7C3AED]/10'
-                                                : 'border-white/10 hover:border-white/20'
-                                        }`}
+                                        onClick={() => setShowInviteModal(false)}
+                                        className="flex-1 h-16 border border-white/10 text-white font-bold uppercase tracking-[0.2em] hover:bg-white/5 transition-all text-xs"
                                     >
-                                        <Camera className="w-5 h-5 mb-2 text-white/60" />
-                                        <div className="font-bold">Employee</div>
-                                        <div className="text-xs text-white/40 mt-1">Can upload and search</div>
+                                        Cancel
                                     </button>
                                     <button
-                                        type="button"
-                                        onClick={() => setInviteRole('admin')}
-                                        className={`p-4 border-2 text-left transition-all ${
-                                            inviteRole === 'admin'
-                                                ? 'border-[#7C3AED] bg-[#7C3AED]/10'
-                                                : 'border-white/10 hover:border-white/20'
-                                        }`}
+                                        type="submit"
+                                        disabled={inviting}
+                                        className="flex-1 h-16 bg-white text-black font-bold uppercase tracking-[0.2em] hover:bg-[#7C3AED] hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-xs"
                                     >
-                                        <Shield className="w-5 h-5 mb-2 text-[#7C3AED]" />
-                                        <div className="font-bold">Admin</div>
-                                        <div className="text-xs text-white/40 mt-1">Full management access</div>
+                                        {inviting ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Mail className="w-4 h-4" />
+                                                Send Clearance
+                                            </>
+                                        )}
                                     </button>
                                 </div>
-                            </div>
-                            
-                            <div className="flex gap-4 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowInviteModal(false)}
-                                    className="flex-1 h-14 border-2 border-white/10 text-white font-bold uppercase tracking-widest hover:bg-white/5 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={inviting}
-                                    className="flex-1 h-14 bg-[#7C3AED] text-white font-bold uppercase tracking-widest hover:bg-[#6D28D9] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {inviting ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <Mail className="w-4 h-4" />
-                                            Send Invite
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
