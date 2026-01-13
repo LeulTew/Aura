@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
     ArrowRight, Camera, Sparkles, Shield, Zap, 
-    Users, ChevronDown, Monitor, Globe, Smartphone,
-    CheckCircle2
+    Smartphone, Mail
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -38,10 +37,10 @@ export default function LandingPage() {
                     </div>
                     
                     <div className="hidden md:flex items-center gap-12">
-                        {['Features', 'Intelligence', 'Pricing', 'Infrastructure'].map((item) => (
+                        {['Features', 'Intelligence', 'For Studios'].map((item) => (
                             <a 
                                 key={item} 
-                                href={`#${item.toLowerCase()}`} 
+                                href={`#${item.toLowerCase().replace(' ', '-')}`} 
                                 className={`${fontMono} text-white/40 hover:text-white transition-colors`}
                             >
                                 {item}
@@ -52,15 +51,9 @@ export default function LandingPage() {
                     <div className="flex items-center gap-6">
                         <Link 
                             href="/login"
-                            className={`${fontMono} hidden sm:block text-white/60 hover:text-white transition-colors`}
-                        >
-                            Log In
-                        </Link>
-                        <Link 
-                            href="/login"
                             className="bg-white text-black px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-[#7C3AED] hover:text-white transition-all duration-300"
                         >
-                            Get Started
+                            Log In
                         </Link>
                     </div>
                 </div>
@@ -92,12 +85,18 @@ export default function LandingPage() {
                             </p>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-6 lg:justify-end">
-                            <button className="bg-[#7C3AED] text-white px-12 py-6 text-sm font-bold uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_0_40px_rgba(124,58,237,0.3)]">
-                                Create Account
-                            </button>
-                            <button className="border-2 border-white/10 text-white px-12 py-6 text-sm font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">
-                                Watch Demo
-                            </button>
+                            <Link 
+                                href="/login"
+                                className="bg-[#7C3AED] text-white px-12 py-6 text-sm font-bold uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_0_40px_rgba(124,58,237,0.3)] text-center"
+                            >
+                                Log In
+                            </Link>
+                            <a 
+                                href="#for-studios" 
+                                className="border-2 border-white/10 text-white px-12 py-6 text-sm font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all text-center"
+                            >
+                                Learn More
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -105,13 +104,9 @@ export default function LandingPage() {
                 {/* Aesthetic Hero Asset */}
                 <div className="relative mt-24 max-w-[1400px] w-full aspect-video border-[3px] border-white/5 group">
                     <img 
-                        src="/_next/image?url=%2Fhome%2Fleul%2F.gemini%2Fantigravity%2Fbrain%2F89a49aa5-0027-42f7-840e-262d7bb1186b%2FAura_Landing_Hero_Asset.png&w=1920&q=75" 
+                        src="https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&q=80&w=2000" 
                         alt="Aura Intelligence"
                         className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-700"
-                        onError={(e) => {
-                            // Fallback for environment asset paths
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&q=80&w=2000";
-                        }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
                     
@@ -165,21 +160,22 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA */}
-            <section className="py-48 px-8 border-t border-white/5 overflow-hidden">
+            {/* For Studios CTA */}
+            <section id="for-studios" className="py-48 px-8 border-t border-white/5 overflow-hidden">
                 <div className="max-w-5xl mx-auto text-center relative">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full w-[800px] h-[400px] bg-[#7C3AED]/20 blur-[150px] pointer-events-none" />
                     
-                    <h2 className={`${fontDisplay} text-[8vw] mb-12`}>Scale your<br />Legacy.</h2>
+                    <h2 className={`${fontDisplay} text-[8vw] mb-12`}>Work with<br />Aura.</h2>
                     <p className="text-2xl text-white/40 mb-16 max-w-xl mx-auto font-mono uppercase tracking-widest leading-normal">
-                        Join the high-performance culture of Aura.
+                        Platform access is by invitation only.
                     </p>
-                    <Link 
-                        href="/login"
-                        className="inline-block bg-white text-black px-16 py-8 text-lg font-black uppercase tracking-[0.3em] hover:bg-[#7C3AED] hover:text-white transition-all transform hover:-translate-y-2 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                    <a 
+                        href="mailto:partners@aura.studio"
+                        className="inline-flex items-center gap-4 bg-white text-black px-16 py-8 text-lg font-black uppercase tracking-[0.3em] hover:bg-[#7C3AED] hover:text-white transition-all transform hover:-translate-y-2 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                     >
-                        Initialize
-                    </Link>
+                        <Mail className="w-6 h-6" />
+                        Contact for Access
+                    </a>
                 </div>
             </section>
 
@@ -202,7 +198,7 @@ export default function LandingPage() {
                         <div>
                             <div className={`${fontMono} mb-6 text-white`}>Platform</div>
                             <div className="space-y-4 text-sm text-white/40 font-mono">
-                                <div className="hover:text-white cursor-pointer transition-colors">SuperAdmin</div>
+                                <Link href="/login" className="block hover:text-white transition-colors">Access Portal</Link>
                                 <div className="hover:text-white cursor-pointer transition-colors">Agent Sync</div>
                                 <div className="hover:text-white cursor-pointer transition-colors">Cloud API</div>
                             </div>
@@ -212,7 +208,7 @@ export default function LandingPage() {
                             <div className="space-y-4 text-sm text-white/40 font-mono">
                                 <div className="hover:text-white cursor-pointer transition-colors">Privacy</div>
                                 <div className="hover:text-white cursor-pointer transition-colors">Terms</div>
-                                <div className="hover:text-white cursor-pointer transition-colors">Contact</div>
+                                <a href="mailto:partners@aura.studio" className="block hover:text-white transition-colors">Contact</a>
                             </div>
                         </div>
                     </div>
