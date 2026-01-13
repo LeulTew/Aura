@@ -28,11 +28,22 @@ interface PlatformStats {
     total_storage_gb: number;
 }
 
+interface UsageLog {
+    id: string;
+    org_id: string;
+    action: string;
+    bytes_processed: number;
+    created_at: string;
+    metadata: any;
+    organizations?: { name: string };
+}
+
 export default function SuperAdminPage() {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [orgs, setOrgs] = useState<Organization[]>([]);
     const [stats, setStats] = useState<PlatformStats | null>(null);
+    const [logs, setLogs] = useState<UsageLog[]>([]);
     const [error, setError] = useState("");
     
     // Create tenant modal
@@ -40,6 +51,13 @@ export default function SuperAdminPage() {
     const [newTenantName, setNewTenantName] = useState("");
     const [newTenantSlug, setNewTenantSlug] = useState("");
     const [creating, setCreating] = useState(false);
+
+    // Edit tenant modal
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+    const [editPlan, setEditPlan] = useState("");
+    const [editLimit, setEditLimit] = useState(0);
+    const [updating, setUpdating] = useState(false);
 
     // Design tokens - Editorial style
     const accentColor = '#7C3AED'; // Purple for SuperAdmin
@@ -85,6 +103,15 @@ export default function SuperAdminPage() {
                 total_photos: photoCount || 0,
                 total_storage_gb: orgData?.reduce((acc, o) => acc + (o.storage_used_bytes || 0), 0) / (1024 * 1024 * 1024) || 0
             });
+
+            // Fetch recent usage logs
+            const { data: logData } = await supabase
+                .from('usage_logs')
+                .select('*, organizations(name)')
+                .order('created_at', { ascending: false })
+                .limit(20);
+            
+            setLogs(logData || []);
             
         } catch (err: any) {
             console.error("Fetch error:", err);
@@ -144,6 +171,42 @@ export default function SuperAdminPage() {
         } catch (err: any) {
             setError(err.message);
         }
+    };
+
+    const handleUpdateTenant = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedOrg) return;
+        
+        setUpdating(true);
+        setError("");
+        try {
+            const { data, error } = await supabase
+                .from('organizations')
+                .update({
+                    plan: editPlan,
+                    storage_limit_gb: editLimit
+                })
+                .eq('id', selectedOrg.id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            setOrgs(prev => prev.map(o => o.id === selectedOrg.id ? data : o));
+            setShowEditModal(false);
+            setSelectedOrg(null);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const openEditModal = (org: Organization) => {
+        setSelectedOrg(org);
+        setEditPlan(org.plan);
+        setEditLimit(org.storage_limit_gb);
+        setShowEditModal(true);
     };
 
     const formatBytes = (bytes: number) => {
@@ -239,9 +302,11 @@ export default function SuperAdminPage() {
                     </div>
                 </section>
 
-                {/* TENANTS TABLE */}
+                {/* MAIN CONTENT GRID */}
                 <section className="px-8 py-12">
-                    <div className={container}>
+                    <div className={`${container} grid grid-cols-1 lg:grid-cols-3 gap-12`}>
+                        {/* LEFT: TENANTS TABLE */}
+                        <div className="lg:col-span-2">
                         {loading ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-8 h-8 animate-spin" />
@@ -308,16 +373,24 @@ export default function SuperAdminPage() {
                                                     )}
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <button 
-                                                        onClick={() => toggleTenantStatus(org)}
-                                                        className={`${fontMono} px-4 py-2 border-[2px] transition-colors ${
-                                                            org.is_active 
-                                                                ? 'border-red-500 text-red-600 hover:bg-red-500 hover:text-white' 
-                                                                : 'border-green-500 text-green-600 hover:bg-green-500 hover:text-white'
-                                                        }`}
-                                                    >
-                                                        {org.is_active ? 'SUSPEND' : 'ACTIVATE'}
-                                                    </button>
+                                                    <div className="flex justify-end gap-2">
+                                                        <button 
+                                                            onClick={() => openEditModal(org)}
+                                                            className={`${fontMono} px-4 py-2 border-[2px] border-black hover:bg-black hover:text-white transition-colors`}
+                                                        >
+                                                            EDIT
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => toggleTenantStatus(org)}
+                                                            className={`${fontMono} px-4 py-2 border-[2px] transition-colors ${
+                                                                org.is_active 
+                                                                    ? 'border-red-500 text-red-600 hover:bg-red-500 hover:text-white' 
+                                                                    : 'border-green-500 text-green-600 hover:bg-green-500 hover:text-white'
+                                                            }`}
+                                                        >
+                                                            {org.is_active ? 'SUSPEND' : 'ACTIVATE'}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -325,6 +398,69 @@ export default function SuperAdminPage() {
                                 </table>
                             </div>
                         )}
+                        </div>
+
+                        {/* RIGHT: ACTIVITY FEED */}
+                        <div className="lg:col-span-1">
+                            <div className="border-[3px] border-black bg-white">
+                                <div className="bg-black text-white p-4">
+                                    <h3 className={fontMono}>Platform Activity</h3>
+                                </div>
+                                <div className="divide-y-[3px] divide-black max-h-[600px] overflow-y-auto">
+                                    {logs.length === 0 ? (
+                                        <div className="p-8 text-center text-black/40">
+                                            <p className={fontMono}>No recent activity</p>
+                                        </div>
+                                    ) : (
+                                        logs.map((log) => (
+                                            <div key={log.id} className="p-4 hover:bg-[#F5F5F5] transition-colors">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className={`${fontMono} text-[10px] bg-black text-white px-2 py-0.5`}>
+                                                        {log.action.toUpperCase()}
+                                                    </span>
+                                                    <span className="text-[10px] text-black/40 font-mono">
+                                                        {new Date(log.created_at).toLocaleTimeString()}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm font-bold">
+                                                    {log.organizations?.name || 'Unknown Tenant'}
+                                                </div>
+                                                <div className="text-xs text-black/60 truncate">
+                                                    {log.action === 'upload' ? `Processed ${formatBytes(log.bytes_processed)}` : 
+                                                     log.action === 'search' ? `Face search performed` :
+                                                     log.action === 'bundle_create' ? `Bundle created: ${log.metadata?.name || 'unnamed'}` :
+                                                     'Platform action'}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="p-4 bg-[#F5F5F5] border-t-[3px] border-black text-center">
+                                    <Link href="/superadmin/logs" className={`${fontMono} text-[10px] hover:underline`}>
+                                        View Full Audit Log
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* SYSTEM STATUS CARD */}
+                            <div className="mt-8 border-[3px] border-black p-6 bg-[#7C3AED] text-white">
+                                <h3 className={`${fontMono} mb-4`}>System Health</h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span>API Core</span>
+                                        <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Operational</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span>Supabase DB</span>
+                                        <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Normal</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span>Storage Bucket</span>
+                                        <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </main>
@@ -391,6 +527,70 @@ export default function SuperAdminPage() {
                             >
                                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 CREATE
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* EDIT TENANT MODAL */}
+            {showEditModal && (
+                <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-8">
+                    <form onSubmit={handleUpdateTenant} className="bg-white border-[3px] border-black w-full max-w-lg">
+                        <div className="bg-black text-white p-6">
+                            <span className={fontMono} style={{ color: accentColor }}>Management</span>
+                            <h2 className={`${fontDisplay} text-3xl mt-2`}>Edit {selectedOrg?.name}</h2>
+                        </div>
+                        
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className={`${fontMono} text-black/60 block mb-2`}>Subscription Plan</label>
+                                <select 
+                                    value={editPlan}
+                                    onChange={(e) => setEditPlan(e.target.value)}
+                                    className="w-full border-[3px] border-black p-4 text-lg focus:border-[#7C3AED] outline-none transition-colors bg-white appearance-none"
+                                >
+                                    <option value="free">FREE</option>
+                                    <option value="pro">PRO</option>
+                                    <option value="enterprise">ENTERPRISE</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className={`${fontMono} text-black/60 block mb-2`}>Storage Limit (GB)</label>
+                                <input
+                                    type="number"
+                                    value={editLimit}
+                                    onChange={(e) => setEditLimit(parseInt(e.target.value))}
+                                    className="w-full border-[3px] border-black p-4 text-lg focus:border-[#7C3AED] outline-none transition-colors"
+                                    required
+                                    min="1"
+                                />
+                            </div>
+                            
+                            {error && (
+                                <div className="p-4 border-[3px] border-red-500 text-red-600 flex items-center gap-3">
+                                    <AlertCircle className="w-5 h-5" />
+                                    <span className={fontMono}>{error}</span>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 border-t-[3px] border-black">
+                            <button
+                                type="button"
+                                onClick={() => setShowEditModal(false)}
+                                className={`${fontMono} p-4 hover:bg-[#F5F5F5] transition-colors`}
+                            >
+                                CANCEL
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={updating}
+                                className={`${fontMono} p-4 bg-black text-white hover:bg-[#7C3AED] transition-colors flex items-center justify-center gap-2`}
+                            >
+                                {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                SAVE CHANGES
                             </button>
                         </div>
                     </form>

@@ -54,9 +54,57 @@ def store_embeddings(records: List[Dict[str, Any]]) -> int:
         logger.info(f"Stored {count} embeddings in Supabase")
         return count
         
-    except Exception as e:
-        logger.error(f"Failed to store embeddings: {e}")
         return 0
+
+
+def store_embedding(
+    source_path: str,
+    embedding: List[float],
+    photo_date: Optional[str] = None,
+    metadata: Dict[str, Any] = {},
+    org_id: Optional[str] = None,
+    size_bytes: int = 0
+) -> Optional[str]:
+    """
+    Store a single face embedding in Supabase.
+    
+    Args:
+        source_path: Full path to the photo
+        embedding: 512D embedding vector
+        photo_date: Date/time of capture
+        metadata: Additional JSON data
+        org_id: Organization ID (Phase 5)
+        size_bytes: File size (Phase 5B)
+        
+    Returns:
+        The ID of the created record, or None
+    """
+    try:
+        client = get_client()
+        record = {
+            "path": source_path,
+            "embedding": embedding,
+            "photo_date": photo_date,
+            "metadata": metadata
+        }
+        if org_id:
+            record["org_id"] = org_id
+        if size_bytes > 0:
+            record["size_bytes"] = size_bytes
+            
+        result = client.table("photos").insert(record).execute()
+        
+        if result.data and len(result.data) > 0:
+            new_id = result.data[0]["id"]
+            # Increment org storage counter if applicable
+            if org_id and size_bytes > 0:
+                update_storage_stats(org_id, size_bytes)
+            return new_id
+        return None
+        
+    except Exception as e:
+        logger.error(f"Failed to store embedding: {e}")
+        return None
 
 
 def search_similar(
@@ -187,6 +235,58 @@ def add_photo_matches(matches: List[Dict[str, Any]]) -> int:
     except Exception as e:
         logger.error(f"Error adding photo matches: {e}")
         return 0
+
+
+def log_usage(
+    org_id: str,
+    action: str,
+    user_id: Optional[str] = None,
+    bytes_processed: int = 0,
+    metadata: Dict[str, Any] = {}
+) -> bool:
+    """
+    Log resource usage for a tenant.
+    Used for Phase 5B SuperAdmin analytics.
+    """
+    try:
+        client = get_client()
+        client.table("usage_logs").insert({
+            "org_id": org_id,
+            "user_id": user_id,
+            "action": action,
+            "bytes_processed": bytes_processed,
+            "metadata": metadata
+        }).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to log usage for org {org_id}: {e}")
+        return False
+
+
+def update_storage_stats(org_id: str, bytes_added: int) -> bool:
+    """Update the storage_used_bytes counter for an organization atomically."""
+    try:
+        client = get_client()
+        # Use the atomic increment RPC from Phase 5B migration
+        client.rpc("increment_org_storage", {
+            "p_org_id": org_id,
+            "p_bytes": bytes_added
+        }).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update storage stats for org {org_id}: {e}")
+        # Fallback to manual update if RPC fails (might happen before migration is run)
+        try:
+            res = client.table("organizations").select("storage_used_bytes").eq("id", org_id).single().execute()
+            if res.data:
+                current = res.data["storage_used_bytes"] or 0
+                client.table("organizations").update({
+                    "storage_used_bytes": current + bytes_added
+                }).eq("id", org_id).execute()
+                return True
+        except:
+            pass
+        return False
 
 
 # ============================================================================

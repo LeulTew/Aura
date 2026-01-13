@@ -1,12 +1,14 @@
 import os
 from contextlib import asynccontextmanager
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import tempfile
 import shutil
 import logging
+import jwt
+from datetime import datetime, timedelta, timezone
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -86,6 +88,27 @@ class MatchResponse(BaseModel):
     success: bool
     count: int = 0
     error: Optional[str] = None
+
+# Auth Dependency
+from fastapi import Header
+
+def get_auth_context(authorization: str = Header(None)):
+    """Extract role and org_id from JWT."""
+    if not authorization:
+        return {"role": "guest", "org_id": None}
+    
+    try:
+        token = authorization.replace("Bearer ", "")
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return {
+            "user_id": payload.get("sub"),
+            "role": payload.get("role"),
+            "org_id": payload.get("org_id"),
+            "org_slug": payload.get("org_slug")
+        }
+    except Exception as e:
+        logger.warning(f"Auth error: {e}")
+        return {"role": "guest", "org_id": None}
 
 # ... existing endpoints ...
 
@@ -189,7 +212,8 @@ async def embed_face(file: UploadFile = File(...)):
 async def index_photo(
     file: UploadFile = File(...),
     path: str = Form(...),
-    metadata: str = Form("{}") # JSON string
+    metadata: str = Form("{}"), # JSON string
+    auth: dict = Depends(get_auth_context)
 ):
     """
     Index a photo that was uploaded to Supabase Storage by the client.
@@ -230,17 +254,30 @@ async def index_photo(
             photo_date = meta_dict.get("created_at") or datetime.now().isoformat()
             
             # We need to use store_embedding from database_supabase
-            from database_supabase import store_embedding
+            from database_supabase import store_embedding, log_usage
             
-            # Ensure metadata includes width/height if not present?
-            # Client usually sends it.
+            # Get file size if possible (streaming file to temp might be needed for real size)
+            # For now use content length or actual read bytes
+            file_size = len(contents)
             
             record_id = store_embedding(
                 source_path=path, # Points to Full Res location
                 embedding=embedding,
                 photo_date=photo_date,
-                metadata=meta_dict
+                metadata=meta_dict,
+                org_id=auth.get("org_id"),
+                size_bytes=file_size
             )
+            
+            # Log usage for SuperAdmin dashboard
+            if auth.get("org_id"):
+                log_usage(
+                    org_id=auth["org_id"],
+                    user_id=auth.get("user_id"),
+                    action="upload",
+                    bytes_processed=file_size,
+                    metadata={"path": path}
+                )
             
             duration = time.time() - start
             return {
@@ -261,7 +298,8 @@ async def index_photo(
 @app.post("/api/scan", response_model=ScanDirectoryResponse)
 async def scan_directory(
     directory_path: str,
-    persist: bool = Query(default=True, description="Store results in Supabase")
+    persist: bool = Query(default=True, description="Store results in Supabase"),
+    auth: dict = Depends(get_auth_context)
 ):
     """
     Scan a directory for faces and return/store embeddings.
@@ -277,20 +315,45 @@ async def scan_directory(
         results = fp.scan_directory(directory_path)
         
         stored_count = 0
+        total_size = 0
         if persist and results:
-            from database_supabase import store_embeddings
+            from database_supabase import store_embeddings, log_usage
             
             # Prepare records for Supabase
             db_records = []
             for r in results:
+                # Approximate size or check file size
+                try:
+                    size = os.path.getsize(r["path"])
+                except:
+                    size = 0
+                
+                total_size += size
+                
                 db_records.append({
                     "path": r["path"],
                     "embedding": r["embedding"],
                     "photo_date": r.get("photo_date"),
-                    "metadata": {"source": "scan"}
+                    "metadata": {"source": "scan"},
+                    "org_id": auth.get("org_id"),
+                    "size_bytes": size
                 })
             
             stored_count = store_embeddings(db_records)
+            
+            # Update organization storage stats if org_id is present
+            if auth.get("org_id") and total_size > 0:
+                from database_supabase import update_storage_stats
+                update_storage_stats(auth["org_id"], total_size)
+                
+                log_usage(
+                    org_id=auth["org_id"],
+                    user_id=auth.get("user_id"),
+                    action="scan_ingest",
+                    bytes_processed=total_size,
+                    metadata={"directory": directory_path, "count": len(results)}
+                )
+            
             logger.info(f"Stored {stored_count} face records in Supabase")
         
         return ScanDirectoryResponse(
@@ -311,7 +374,8 @@ async def scan_directory(
 async def search_faces(
     file: UploadFile = File(...),
     limit: int = Query(default=100, ge=1, le=500, description="Max results to return"),
-    min_similarity: float = Query(default=0.6, ge=0, le=1, description="Minimum similarity threshold (0-1)")
+    min_similarity: float = Query(default=0.6, ge=0, le=1, description="Minimum similarity threshold (0-1)"),
+    auth: dict = Depends(get_auth_context)
 ):
     """
     Upload a selfie to find matching faces in the database.
@@ -352,6 +416,15 @@ async def search_faces(
                  created_at=m.get("created_at", "Unknown") # Supabase might not return created_at in search unless updated
              ))
         
+        if auth.get("org_id"):
+            from database_supabase import log_usage
+            log_usage(
+                org_id=auth["org_id"],
+                user_id=auth.get("user_id"),
+                action="search",
+                metadata={"limit": limit, "threshold": min_similarity}
+            )
+            
         return SearchResponse(
             success=True,
             matches=search_matches
@@ -583,7 +656,10 @@ async def legacy_admin_login(req: LoginRequest):
 
 
 @app.get("/api/admin/folders", response_model=FolderResponse)
-async def list_folders(path: str = Query(default="/")):
+async def list_folders(
+    path: str = Query(default="/"),
+    auth: dict = Depends(get_auth_context)
+):
     if not os.path.exists(path) or not os.path.isdir(path):
         raise HTTPException(status_code=404, detail="Path not found")
     
@@ -601,68 +677,99 @@ async def list_folders(path: str = Query(default="/")):
         
         items.sort(key=lambda x: (x.type != "dir", x.name.lower()))
         parent = os.path.dirname(path) if path != "/" else None
+        
+        if auth.get("org_id"):
+            from database_supabase import log_usage
+            log_usage(
+                org_id=auth["org_id"],
+                user_id=auth.get("user_id"),
+                action="browse",
+                metadata={"path": path}
+            )
+            
         return FolderResponse(path=path, parent=parent, items=items)
     except PermissionError:
         raise HTTPException(status_code=403, detail="Permission denied")
 
 @app.post("/api/bundles", response_model=BundleResponse)
-async def create_bundle(req: BundleRequest):
-    import json
-    import uuid
-    from datetime import datetime
+async def create_bundle(
+    req: BundleRequest,
+    auth: dict = Depends(get_auth_context)
+):
+    """Create a photo bundle in Supabase (Phase 5)."""
+    from database_supabase import get_client, log_usage
     
     try:
-        bundle_id = str(uuid.uuid4())[:8]
-        bundle_data = {
-            "id": bundle_id,
+        client = get_client()
+        
+        # 1. Insert into Supabase
+        bundle_record = {
             "name": req.name,
             "photo_ids": req.photo_ids,
-            "created_at": str(datetime.now())
+            "org_id": auth.get("org_id"),
+            "created_by": auth.get("user_id")
         }
         
-        os.makedirs(os.path.dirname(BUNDLE_FILE), exist_ok=True)
-        bundles = {}
-        if os.path.exists(BUNDLE_FILE):
-            try:
-                with open(BUNDLE_FILE, "r") as f:
-                    bundles = json.load(f)
-            except: pass
+        result = client.table("bundles").insert(bundle_record).execute()
         
-        bundles[bundle_id] = bundle_data
-        
-        with open(BUNDLE_FILE, "w") as f:
-            json.dump(bundles, f, indent=2)
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create bundle in database")
             
-        return BundleResponse(id=bundle_id, url=f"/gallery/{bundle_id}")
+        bundle_id = result.data[0]["id"]
+        
+        # 2. Log usage
+        if auth.get("org_id"):
+            log_usage(
+                org_id=auth["org_id"],
+                user_id=auth.get("user_id"),
+                action="bundle_create",
+                metadata={"name": req.name, "photo_count": len(req.photo_ids)}
+            )
+            
+        return BundleResponse(id=str(bundle_id), url=f"/gallery/{bundle_id}")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error creating bundle: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/bundles/{bundle_id}")
 async def get_bundle(bundle_id: str):
-    import json
+    """Retrieve a bundle and its photos from Supabase (Phase 5)."""
+    from database_supabase import get_client, get_signed_url
     
-    if not os.path.exists(BUNDLE_FILE):
-         raise HTTPException(status_code=404, detail="Bundle not found")
-         
     try:
-        with open(BUNDLE_FILE, "r") as f:
-            bundles = json.load(f)
-            
-        if bundle_id not in bundles:
+        client = get_client()
+        # 1. Fetch bundle metadata
+        result = client.table("bundles").select("*, profiles(display_name)").eq("id", bundle_id).execute()
+        
+        if not result.data or len(result.data) == 0:
             raise HTTPException(status_code=404, detail="Bundle not found")
             
-        bundle = bundles[bundle_id]
+        bundle = result.data[0]
+        photo_ids = bundle.get("photo_ids", [])
         
-        # Return photo paths directly for now (client will request image blobs)
-        # TODO: Enhance with database metadata if needed
-        enriched_photos = [{"path": p, "photo_date": "Unknown"} for p in bundle.get("photo_ids", [])]
-        bundle["photos"] = enriched_photos
-        
-        return bundle
+        # 2. Fetch photos in this bundle
+        if photo_ids:
+            photos_result = client.table("photos").select("id, path, photo_date, metadata").in_("id", photo_ids).execute()
+            photos = photos_result.data or []
+            
+            # 3. Generate signed URLs
+            for p in photos:
+                p["url"] = get_signed_url(p["path"])
+        else:
+            photos = []
+            
+        return {
+            "success": True,
+            "bundle": {
+                "id": str(bundle["id"]),
+                "name": bundle["name"],
+                "created_at": bundle["created_at"],
+                "created_by": bundle.get("profiles", {}).get("display_name") if bundle.get("profiles") else "System",
+                "photos": photos
+            }
+        }
     except Exception as e:
-        logger.error(f"Error reading bundle: {e}")
+        logger.error(f"Error fetching bundle {bundle_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/qr")
