@@ -265,7 +265,36 @@ export default function SourcesPage() {
                                                 {source.last_sync ? new Date(source.last_sync).toLocaleDateString() : 'NO ACTIVITY'}
                                             </span>
                                         </div>
+                                        {source.source_type === 'event_temp' && source.photo_count > 0 && (
+                                            <button
+                                                onClick={async () => {
+                                                    if (!confirm(`Convert all ${source.photo_count} event photos to permanent storage?`)) return;
+                                                    setError('');
+                                                    setSuccess('');
+                                                    try {
+                                                        const res = await fetch('/api/convert-permanent', {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ orgId, convertAll: true })
+                                                        });
+                                                        const data = await res.json();
+                                                        if (data.success) {
+                                                            setSuccess(data.message);
+                                                            fetchSources();
+                                                        } else {
+                                                            setError(data.error || 'Conversion failed');
+                                                        }
+                                                    } catch (err) {
+                                                        setError('Network error during conversion');
+                                                    }
+                                                }}
+                                                className="mt-4 w-full py-3 bg-[#F59E0B] hover:bg-[#D97706] text-black font-bold text-xs uppercase tracking-[0.2em] transition-colors"
+                                            >
+                                                Convert to Permanent
+                                            </button>
+                                        )}
                                     </div>
+
                                 </div>
                             );
                         })}

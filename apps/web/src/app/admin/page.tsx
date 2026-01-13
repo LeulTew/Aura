@@ -150,10 +150,21 @@ export default function AdminPage() {
         setUploadProgress(Math.floor((i / items.length) * 100));
 
         try {
-            // 1. Upload to Supabase Storage
+            // 1. Upload to Supabase Storage with nested path structure
+            // Format: {org_slug}/{year}/uploads/originals/{filename}
             const fileExt = file.name.split('.').pop() || '';
-            const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-            const filePath = `uploads/${fileName}`;
+            const year = new Date().getFullYear();
+            const timestamp = Date.now();
+            const uniqueId = Math.random().toString(36).substr(2, 9);
+            const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const fileName = `${timestamp}_${uniqueId}_${safeFileName}`;
+            
+            // Use org_slug from JWT, fallback to 'default'
+            const token = sessionStorage.getItem("admin_token");
+            const claims = token ? parseJwt(token) : null;
+            const currentOrgSlug = claims?.org_slug || 'default';
+            
+            const filePath = `${currentOrgSlug}/${year}/uploads/originals/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('photos')
