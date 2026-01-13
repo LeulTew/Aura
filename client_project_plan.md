@@ -152,8 +152,8 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 **Goal**: Local + Cloud sources optimized for Ethiopian market conditions.
 
 #### 6A: Cloud Enhancements [TODO]
-- [ ] **Source Types**: Add `source_type` column (cloud/local_sync/event_temp)
-- [ ] **Sources UI**: Admin can register and manage storage sources
+- [x] **Source Types**: `source_type` column verified in schema
+- [x] **Sources UI**: /admin/sources page with type visualization
 - [ ] **Event Temp Tier**: Auto-cleanup after 30 days, convert to permanent on approval
 
 #### 6B: Sync Agent (Desktop App) [TODO]
