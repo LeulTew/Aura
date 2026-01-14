@@ -6,10 +6,17 @@ import { supabase } from "@/lib/supabase";
 import { 
     Loader2, Building2, Users, HardDrive, Activity, 
     Plus, ArrowLeft, RefreshCw, AlertCircle,
-    CheckCircle2, XCircle, Camera
+    CheckCircle2, XCircle, Trash2
 } from "lucide-react";
 import Link from 'next/link';
 
+// --- FONTS ---
+import { Inter, JetBrains_Mono } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
+const jetbrains = JetBrains_Mono({ subsets: ['latin'] });
+
+// --- TYPES ---
 interface Organization {
     id: string;
     name: string;
@@ -39,6 +46,7 @@ interface UsageLog {
 }
 
 export default function SuperAdminPage() {
+    // --- STATE ---
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -46,25 +54,19 @@ export default function SuperAdminPage() {
     const [logs, setLogs] = useState<UsageLog[]>([]);
     const [error, setError] = useState("");
     
-    // Create tenant modal
+    // Modals
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newTenantName, setNewTenantName] = useState("");
     const [newTenantSlug, setNewTenantSlug] = useState("");
     const [creating, setCreating] = useState(false);
 
-    // Edit tenant modal
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
     const [editPlan, setEditPlan] = useState("");
     const [editLimit, setEditLimit] = useState(0);
     const [updating, setUpdating] = useState(false);
 
-    // Design tokens - Editorial style
-    const accentColor = '#7C3AED'; // Purple for SuperAdmin
-    const fontDisplay = "font-sans font-black uppercase leading-[0.9] tracking-[-0.03em]";
-    const fontMono = "font-mono text-xs uppercase tracking-[0.15em] font-medium";
-    const container = "max-w-[1200px] mx-auto w-full";
-
+    // --- EFFECTS ---
     useEffect(() => {
         const t = sessionStorage.getItem("admin_token");
         if (t) {
@@ -78,21 +80,18 @@ export default function SuperAdminPage() {
         if (token) fetchData();
     }, [token]);
 
+    // --- ACTIONS ---
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data: orgData, error: orgError } = await supabase
+            const { data: orgData } = await supabase
                 .from('organizations')
                 .select('*')
                 .order('created_at', { ascending: false });
             
-            if (orgError) {
-                console.log("Organizations table may not exist:", orgError);
-                setOrgs([]);
-            } else {
-                setOrgs(orgData || []);
-            }
+            setOrgs(orgData || []);
             
+            // Stats
             const { count: photoCount } = await supabase
                 .from('photos')
                 .select('*', { count: 'exact', head: true });
@@ -104,7 +103,7 @@ export default function SuperAdminPage() {
                 total_storage_gb: orgData?.reduce((acc, o) => acc + (o.storage_used_bytes || 0), 0) / (1024 * 1024 * 1024) || 0
             });
 
-            // Fetch recent usage logs
+            // Logs
             const { data: logData } = await supabase
                 .from('usage_logs')
                 .select('*, organizations(name)')
@@ -127,8 +126,6 @@ export default function SuperAdminPage() {
 
     const handleCreateTenant = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newTenantName || !newTenantSlug) return;
-        
         setCreating(true);
         setError("");
         try {
@@ -136,7 +133,7 @@ export default function SuperAdminPage() {
                 .from('organizations')
                 .insert({
                     name: newTenantName,
-                    slug: newTenantSlug.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+                    slug: newTenantSlug,
                     plan: 'free',
                     storage_limit_gb: 5
                 })
@@ -156,45 +153,20 @@ export default function SuperAdminPage() {
         }
     };
 
-    const toggleTenantStatus = async (org: Organization) => {
-        try {
-            const { error } = await supabase
-                .from('organizations')
-                .update({ is_active: !org.is_active })
-                .eq('id', org.id);
-            
-            if (error) throw error;
-            
-            setOrgs(prev => prev.map(o => 
-                o.id === org.id ? { ...o, is_active: !o.is_active } : o
-            ));
-        } catch (err: any) {
-            setError(err.message);
-        }
-    };
-
     const handleUpdateTenant = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedOrg) return;
-        
         setUpdating(true);
-        setError("");
         try {
             const { data, error } = await supabase
                 .from('organizations')
-                .update({
-                    plan: editPlan,
-                    storage_limit_gb: editLimit
-                })
+                .update({ plan: editPlan, storage_limit_gb: editLimit })
                 .eq('id', selectedOrg.id)
-                .select()
-                .single();
+                .select().single();
             
             if (error) throw error;
-            
             setOrgs(prev => prev.map(o => o.id === selectedOrg.id ? data : o));
             setShowEditModal(false);
-            setSelectedOrg(null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -202,395 +174,235 @@ export default function SuperAdminPage() {
         }
     };
 
-    const openEditModal = (org: Organization) => {
-        setSelectedOrg(org);
-        setEditPlan(org.plan);
-        setEditLimit(org.storage_limit_gb);
-        setShowEditModal(true);
+    const toggleStatus = async (org: Organization) => {
+        try {
+            await supabase.from('organizations').update({ is_active: !org.is_active }).eq('id', org.id);
+            setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, is_active: !o.is_active } : o));
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const formatBytes = (bytes: number) => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        if (bytes === 0) return '0 GB';
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
     };
 
-    if (!token) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-white animate-spin" />
-            </div>
-        );
-    }
+    if (!token) return <div className="min-h-screen bg-[#f7f3ee]" />;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white antialiased">
-            {/* HEADER */}
-            <header className="fixed top-0 w-full z-50 bg-black text-white border-b-[3px] border-white">
-                <div className={`${container} flex justify-between items-center py-4 px-8`}>
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="w-10 h-10 bg-white flex items-center justify-center hover:bg-[#7C3AED] transition-colors group">
-                            <ArrowLeft className="w-5 h-5 text-black group-hover:text-white" />
-                        </Link>
-                        <div>
-                            <div className={fontMono} style={{ color: accentColor }}>SuperAdmin</div>
-                            <div className={`${fontDisplay} text-xl`}>Platform Control</div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={fetchData} 
-                            className="w-10 h-10 border-[3px] border-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        </button>
-                        <button 
-                            onClick={handleLogout}
-                            className={`${fontMono} border-[3px] border-white px-6 py-2 hover:bg-white hover:text-black transition-colors`}
-                        >
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </header>
+        <div className={`min-h-screen ${inter.className} relative flex flex-col overflow-x-hidden`} style={{
+            backgroundColor: '#f7f3ee',
+            color: '#1a1c1e',
+            backgroundImage: 'url("https://www.transparenttextures.com/patterns/felt.png")'
+        }}>
+            {/* GRAIN OVERLAY */}
+            <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-[9999]" style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+            }} />
 
-            <main className="pt-[88px]">
-                {/* STATS SECTION */}
-                <section className="bg-white text-black py-16 px-8 border-b-[3px] border-black">
-                    <div className={container}>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-[3px] bg-black">
-                            <div className="bg-white p-8 text-center">
-                                <Building2 className="w-8 h-8 mx-auto mb-4" style={{ color: accentColor }} />
-                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.total_tenants || 0}</div>
-                                <div className={`${fontMono} text-black/50`}>Total Tenants</div>
-                            </div>
-                            <div className="bg-white p-8 text-center">
-                                <Activity className="w-8 h-8 mx-auto mb-4 text-green-600" />
-                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.active_tenants || 0}</div>
-                                <div className={`${fontMono} text-black/50`}>Active</div>
-                            </div>
-                            <div className="bg-white p-8 text-center">
-                                <Users className="w-8 h-8 mx-auto mb-4 text-blue-600" />
-                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.total_photos?.toLocaleString() || 0}</div>
-                                <div className={`${fontMono} text-black/50`}>Total Photos</div>
-                            </div>
-                            <div className="bg-white p-8 text-center">
-                                <HardDrive className="w-8 h-8 mx-auto mb-4 text-orange-600" />
-                                <div className={`${fontDisplay} text-4xl mb-2`}>{stats?.total_storage_gb.toFixed(1) || 0} GB</div>
-                                <div className={`${fontMono} text-black/50`}>Storage</div>
+            {/* NAV */}
+            <nav className="px-8 py-8 md:px-16 md:py-8 flex justify-between items-end border-b border-[#1a1c1e]/10 relative">
+                <div className="flex flex-col">
+                    <h1 className="font-extrabold text-[#1a1c1e] text-4xl leading-[0.9] tracking-tighter uppercase">Aura</h1>
+                    <span className={`${jetbrains.className} text-[#c5a059] text-xs uppercase tracking-[0.2em] mt-2`}>Platform Control</span>
+                </div>
+                <button onClick={handleLogout} className={`${jetbrains.className} text-[#8e9196] text-sm hover:text-[#1a1c1e] transition-colors border-b border-transparent hover:border-[#1a1c1e]`}>
+                    / Logout
+                </button>
+            </nav>
+
+            <main className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-16 p-8 md:p-16 flex-grow">
+                {/* TOP STATS */}
+                <section className="col-span-1 lg:col-span-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+                    {[
+                        { label: 'Total Tenants', value: stats?.total_tenants || 0 },
+                        { label: 'Active Now', value: stats?.active_tenants || 0 },
+                        { label: 'Total Photos', value: stats?.total_photos?.toLocaleString() || 0 },
+                        { 
+                            label: 'Storage', 
+                            value: stats?.total_storage_gb.toFixed(1) || '0.0', 
+                            unit: 'GB' 
+                        }
+                    ].map((stat, i) => (
+                        <div key={i} className="relative py-6 border-t border-[#1a1c1e]/10 animate-slide-up" style={{ animationDelay: `${0.1 * (i+1)}s` }}>
+                            <span className={`${jetbrains.className} text-[#8e9196] text-[0.7rem] uppercase block mb-4`}>{stat.label}</span>
+                            <div className="text-5xl font-light tracking-tight text-[#1a1c1e]">
+                                {stat.value}
+                                {stat.unit && <span className="text-base text-[#4a4d52] ml-2">{stat.unit}</span>}
                             </div>
                         </div>
-                    </div>
+                    ))}
                 </section>
 
-                {/* ACTIONS BAR */}
-                <section className="py-8 px-8 border-b-[3px] border-white bg-[#0A0A0A]">
-                    <div className={`${container} flex justify-between items-center`}>
-                        <div>
-                            <span className={fontMono} style={{ color: accentColor }}>Organizations</span>
-                            <h2 className={`${fontDisplay} text-3xl mt-1 text-white`}>Manage Tenants</h2>
-                        </div>
+                {/* MANAGEMENT */}
+                <section className="flex flex-col">
+                    <header className="flex justify-between items-center mb-12">
+                        <h2 className="font-extrabold text-xl uppercase tracking-wide text-[#1a1c1e]">Organizations</h2>
                         <button 
                             onClick={() => setShowCreateModal(true)}
-                            className="bg-black text-white px-8 py-4 flex items-center gap-3 hover:bg-[#7C3AED] transition-colors"
+                            className={`${jetbrains.className} bg-[#1a1c1e] text-[#f7f3ee] px-6 py-3 text-xs border-none cursor-pointer shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200`}
                         >
-                            <Plus className="w-5 h-5" />
-                            <span className={fontMono}>New Tenant</span>
+                            CREATE FIRST TENANT
                         </button>
-                    </div>
-                </section>
+                    </header>
 
-                {/* MAIN CONTENT GRID */}
-                <section className="px-8 py-12">
-                    <div className={`${container} grid grid-cols-1 lg:grid-cols-3 gap-12`}>
-                        {/* LEFT: TENANTS TABLE */}
-                        <div className="lg:col-span-2">
-                        {loading ? (
-                            <div className="flex items-center justify-center py-20">
-                                <Loader2 className="w-8 h-8 animate-spin text-white" />
-                            </div>
-                        ) : orgs.length === 0 ? (
-                            <div className="py-20 text-center border-[3px] border-white bg-[#0A0A0A]">
-                                <Building2 className="w-12 h-12 mx-auto mb-4 text-white/20" />
-                                <p className={`${fontMono} text-white/40 mb-6`}>No tenants created yet</p>
-                                <button 
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="bg-white text-black px-8 py-4 hover:bg-[#7C3AED] hover:text-white transition-colors"
-                                >
-                                    <span className={fontMono}>Create First Tenant</span>
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="border-[3px] border-white bg-[#0A0A0A]">
-                                <table className="w-full">
-                                    <thead className="bg-black text-white">
-                                        <tr>
-                                            <th className={`${fontMono} text-left p-4`}>Name</th>
-                                            <th className={`${fontMono} text-left p-4`}>Slug</th>
-                                            <th className={`${fontMono} text-left p-4`}>Plan</th>
-                                            <th className={`${fontMono} text-left p-4`}>Storage</th>
-                                            <th className={`${fontMono} text-left p-4`}>Status</th>
-                                            <th className={`${fontMono} text-right p-4`}>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {orgs.map((org, i) => (
-                                            <tr key={org.id} className={`border-t-[1px] border-white/20 ${i % 2 === 0 ? 'bg-black' : 'bg-[#0A0A0A]'}`}>
-                                                <td className="p-4">
-                                                    <div className="font-bold text-white">{org.name}</div>
-                                                    <div className={`${fontMono} text-white/40`}>{org.id.slice(0, 8)}</div>
-                                                </td>
-                                                <td className={`${fontMono} p-4 text-white/60`}>{org.slug}</td>
-                                                <td className="p-4">
-                                                    <span className={`${fontMono} px-3 py-1 border-[2px] ${
-                                                        org.plan === 'enterprise' ? 'border-purple-500 text-purple-400' :
-                                                        org.plan === 'pro' ? 'border-blue-500 text-blue-400' :
-                                                        'border-white/20 text-white/60'
-                                                    }`}>
-                                                        {org.plan.toUpperCase()}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className={`${fontMono} text-white/80`}>{formatBytes(org.storage_used_bytes)} / {org.storage_limit_gb}GB</div>
-                                                    <div className="w-24 h-2 bg-white/10 mt-1">
-                                                        <div 
-                                                            className="h-full bg-[#7C3AED]"
-                                                            style={{ width: `${Math.min((org.storage_used_bytes / (org.storage_limit_gb * 1024 * 1024 * 1024)) * 100, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    {org.is_active ? (
-                                                        <span className={`${fontMono} text-green-600 flex items-center gap-2`}>
-                                                            <CheckCircle2 className="w-4 h-4" /> ACTIVE
-                                                        </span>
-                                                    ) : (
-                                                        <span className={`${fontMono} text-red-600 flex items-center gap-2`}>
-                                                            <XCircle className="w-4 h-4" /> SUSPENDED
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <button 
-                                                            onClick={() => openEditModal(org)}
-                                                            className={`${fontMono} px-4 py-2 border-[2px] border-white/20 text-white hover:bg-white hover:text-black transition-colors`}
-                                                        >
-                                                            EDIT
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => toggleTenantStatus(org)}
-                                                            className={`${fontMono} px-4 py-2 border-[2px] transition-colors ${
-                                                                org.is_active 
-                                                                    ? 'border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white' 
-                                                                    : 'border-green-500/50 text-green-400 hover:bg-green-500 hover:text-white'
-                                                            }`}
-                                                        >
-                                                            {org.is_active ? 'SUSPEND' : 'ACTIVATE'}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                    {orgs.length === 0 ? (
+                        <div className="border border-dashed border-[#1a1c1e]/20 h-[300px] flex flex-col items-center justify-center bg-white/20 backdrop-blur-[4px] relative">
+                            <span className="absolute text-[8rem] font-black opacity-[0.02] pointer-events-none select-none">VOID</span>
+                            <p className={`${jetbrains.className} text-[#8e9196] text-sm mb-6`}>No tenants created yet</p>
+                            <span className={`${jetbrains.className} text-[0.6rem] text-[#c5a059]`}>SYSTEM IDLE : WAITING FOR INPUT</span>
                         </div>
-
-                        {/* RIGHT: ACTIVITY FEED */}
-                        <div className="lg:col-span-1">
-                            {/* KEEP ACTIVITY FEED DARK FOR CONTRAST MIX */}
-                            <div className="border-[3px] border-black bg-[#0A0A0A]">
-                                <div className="bg-black text-white p-4">
-                                    <h3 className={fontMono}>Platform Activity</h3>
-                                </div>
-                                <div className="divide-y-[1px] divide-white/10 max-h-[600px] overflow-y-auto">
-                                    {logs.length === 0 ? (
-                                        <div className="p-8 text-center text-white/40">
-                                            <p className={fontMono}>No recent activity</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {orgs.map((org) => (
+                                <div key={org.id} className="bg-white/40 border border-[#1a1c1e]/5 p-6 flex justify-between items-center hover:bg-white/60 transition-colors">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <span className="font-bold text-lg">{org.name}</span>
+                                            {org.is_active 
+                                                ? <div className="w-2 h-2 rounded-full bg-[#4f772d] shadow-[0_0_8px_#4f772d]" /> 
+                                                : <div className="w-2 h-2 rounded-full bg-red-400" />
+                                            }
                                         </div>
-                                    ) : (
-                                        logs.map((log) => (
-                                            <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className={`${fontMono} text-[10px] bg-[#7C3AED] text-white px-2 py-0.5`}>
-                                                        {log.action.toUpperCase()}
-                                                    </span>
-                                                    <span className="text-[10px] text-white/40 font-mono">
-                                                        {new Date(log.created_at).toLocaleTimeString()}
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm font-bold text-white">
-                                                    {log.organizations?.name || 'Unknown Tenant'}
-                                                </div>
-                                                <div className="text-xs text-white/60 truncate">
-                                                    {log.action === 'upload' ? `Processed ${formatBytes(log.bytes_processed)}` : 
-                                                     log.action === 'search' ? `Face search performed` :
-                                                     log.action === 'bundle_create' ? `Bundle created: ${log.metadata?.name || 'unnamed'}` :
-                                                     'Platform action'}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
+                                        <div className={`${jetbrains.className} text-xs text-[#8e9196]`}>
+                                            {org.slug} • {org.plan.toUpperCase()} • {formatBytes(org.storage_used_bytes)} / {org.storage_limit_gb}GB
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => { setSelectedOrg(org); setEditPlan(org.plan); setEditLimit(org.storage_limit_gb); setShowEditModal(true); }} className={`${jetbrains.className} text-xs underline decoration-[#1a1c1e]/30 hover:decoration-[#1a1c1e]`}>EDIT</button>
+                                        <button onClick={() => toggleStatus(org)} className={`${jetbrains.className} text-xs text-[#8e9196] hover:text-[#1a1c1e]`}>{org.is_active ? 'SUSPEND' : 'ACTIVATE'}</button>
+                                    </div>
                                 </div>
-                                <div className="p-4 bg-white/5 border-t-[3px] border-white text-center">
-                                    <Link href="/superadmin/logs" className={`${fontMono} text-[10px] text-white/60 hover:text-white hover:underline`}>
-                                        View Full Audit Log
-                                    </Link>
-                                </div>
-                            </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
 
-                            {/* SYSTEM STATUS CARD */}
-                            <div className="mt-8 border-[3px] border-white p-6 bg-[#7C3AED] text-white">
-                                <h3 className={`${fontMono} mb-4`}>System Health</h3>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span>API Core</span>
-                                        <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Operational</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span>Supabase DB</span>
-                                        <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Normal</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span>Storage Bucket</span>
-                                        <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Active</span>
-                                    </div>
+                {/* SIDEBAR */}
+                <aside className="flex flex-col gap-16">
+                    <div className="flex flex-col">
+                        <h3 className={`${jetbrains.className} text-xs uppercase text-[#c5a059] mb-8 pb-2 border-b border-[#c5a059]/30`}>Platform Activity</h3>
+                        <ul className="list-none space-y-0">
+                            {logs.length === 0 ? (
+                                <li className="py-6 border-b border-[#1a1c1e]/5 text-sm text-[#4a4d52]">
+                                    System environment initialized.
+                                    <span className={`${jetbrains.className} block text-xs text-[#8e9196] mt-2`}>Just now // [SYS]</span>
+                                </li>
+                            ) : logs.map(log => (
+                                <li key={log.id} className="py-6 border-b border-[#1a1c1e]/5 text-sm text-[#4a4d52]">
+                                    {log.action.toUpperCase()} - {log.organizations?.name || 'Unknown'}
+                                    <span className={`${jetbrains.className} block text-xs text-[#8e9196] mt-2`}>
+                                        {new Date(log.created_at).toLocaleTimeString()} // [ID:{log.id.slice(0,4)}]
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <Link href="/superadmin/logs" className={`${jetbrains.className} text-xs text-[#1a1c1e] mt-6 underline decoration-[#1a1c1e] underline-offset-4`}>
+                            View Full Audit Log
+                        </Link>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h3 className={`${jetbrains.className} text-xs uppercase text-[#c5a059] mb-8 pb-2 border-b border-[#c5a059]/30`}>System Health</h3>
+                        <div className="grid gap-6">
+                            {[
+                                { name: 'API Core', status: 'Operational' },
+                                { name: 'Supabase DB', status: 'Normal' },
+                                { name: 'Storage Bucket', status: 'Active' }
+                            ].map((node, i) => (
+                                <div key={i} className="flex justify-between items-center p-4 bg-white/30 border-l-[3px] border-[#c5a059]">
+                                    <span className={`${jetbrains.className} text-sm font-medium`}>{node.name}</span>
+                                    <span className="text-xs uppercase tracking-wider text-[#4f772d] flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#4f772d] animate-pulse shadow-[0_0_10px_#4f772d]" />
+                                        {node.status}
+                                    </span>
                                 </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
-                </section>
+                </aside>
             </main>
 
-             {/* CREATE TENANT MODAL */}
+            {/* --- MODALS (Adapted to Vellum) --- */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-8 backdrop-blur-sm">
-                    <form onSubmit={handleCreateTenant} className="bg-black border-[3px] border-white w-full max-w-lg shadow-[0_0_50px_rgba(124,58,237,0.3)]">
-                        <div className="bg-[#7C3AED] text-white p-6">
-                            <span className={fontMono} style={{ color: 'white' }}>New Organization</span>
-                            <h2 className={`${fontDisplay} text-3xl mt-2`}>Create Tenant</h2>
-                        </div>
-                        
-                        <div className="p-8 space-y-6">
+                <div className="fixed inset-0 z-50 bg-[#1a1c1e]/10 backdrop-blur-sm flex items-center justify-center p-8">
+                    <form onSubmit={handleCreateTenant} className="bg-[#f7f3ee] border border-[#1a1c1e]/10 shadow-2xl w-full max-w-lg relative p-8">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-[#c5a059]" />
+                        <h2 className="font-extrabold text-2xl mb-2 text-[#1a1c1e]">NEW TENANT</h2>
+                        <p className={`${jetbrains.className} text-xs text-[#8e9196] mb-8`}>INITIALIZE NEW ORGANIZATION SPACE</p>
+
+                        <div className="space-y-6">
                             <div>
-                                <label className={`${fontMono} text-white/60 block mb-2`}>Organization Name</label>
-                                <input
-                                    type="text"
-                                    value={newTenantName}
-                                    onChange={(e) => {
-                                        setNewTenantName(e.target.value);
-                                        setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-'));
-                                    }}
-                                    placeholder="Studio ABC"
-                                    className="w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 text-lg text-white focus:border-[#7C3AED] outline-none transition-colors"
-                                    required
+                                <label className={`${jetbrains.className} text-xs uppercase block mb-2 text-[#4a4d52]`}>Organization Name</label>
+                                <input 
                                     autoFocus
+                                    value={newTenantName}
+                                    onChange={e => {
+                                        setNewTenantName(e.target.value);
+                                        setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'));
+                                    }}
+                                    className={`w-full bg-white/50 border border-[#1a1c1e]/20 p-3 text-[#1a1c1e] outline-none focus:border-[#c5a059] transition-colors ${jetbrains.className} text-sm`}
+                                    placeholder="Studio ABC"
                                 />
                             </div>
-                            
                             <div>
-                                <label className={`${fontMono} text-white/60 block mb-2`}>URL Slug</label>
-                                <input
-                                    type="text"
+                                <label className={`${jetbrains.className} text-xs uppercase block mb-2 text-[#4a4d52]`}>Slug</label>
+                                <input 
                                     value={newTenantSlug}
-                                    onChange={(e) => setNewTenantSlug(e.target.value)}
-                                    placeholder="studio-abc"
-                                    className={`w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 ${fontMono} text-white focus:border-[#7C3AED] outline-none transition-colors`}
-                                    required
+                                    onChange={e => setNewTenantSlug(e.target.value)}
+                                    className={`w-full bg-white/50 border border-[#1a1c1e]/20 p-3 text-[#1a1c1e] outline-none focus:border-[#c5a059] transition-colors ${jetbrains.className} text-sm`}
                                 />
-                                <p className={`${fontMono} text-white/40 mt-2`}>aura.app/{newTenantSlug || 'slug'}</p>
+                                <div className={`${jetbrains.className} text-[0.65rem] text-[#c5a059] mt-2`}>aura.app/{newTenantSlug}</div>
                             </div>
-                            
-                            {error && (
-                                <div className="p-4 border-[3px] border-red-500 text-red-400 flex items-center gap-3 bg-red-500/10">
-                                    <AlertCircle className="w-5 h-5" />
-                                    <span className={fontMono}>{error}</span>
-                                </div>
-                            )}
                         </div>
-                        
-                        <div className="grid grid-cols-2 border-t-[3px] border-white">
-                            <button
-                                type="button"
-                                onClick={() => setShowCreateModal(false)}
-                                className={`${fontMono} p-4 text-white hover:bg-white/10 transition-colors`}
-                            >
-                                CANCEL
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={creating}
-                                className={`${fontMono} p-4 bg-white text-black hover:bg-[#7C3AED] hover:text-white transition-colors flex items-center justify-center gap-2`}
-                            >
-                                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                CREATE
+
+                        {error && <div className={`${jetbrains.className} text-xs text-red-600 mt-4`}>ERROR: {error}</div>}
+
+                        <div className="flex gap-4 mt-8 pt-6 border-t border-[#1a1c1e]/10">
+                            <button type="button" onClick={() => setShowCreateModal(false)} className={`${jetbrains.className} text-xs px-4 py-3 hover:bg-[#1a1c1e]/5`}>CANCEL</button>
+                            <button disabled={creating} className={`${jetbrains.className} flex-1 bg-[#1a1c1e] text-[#f7f3ee] text-xs px-4 py-3 hover:shadow-lg transition-all`}>
+                                {creating ? 'INITIALIZING...' : 'CONFIRM INITIALIZATION'}
                             </button>
                         </div>
                     </form>
                 </div>
             )}
 
-             {/* EDIT TENANT MODAL */}
             {showEditModal && (
-                <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-8 backdrop-blur-sm">
-                    <form onSubmit={handleUpdateTenant} className="bg-black border-[3px] border-white w-full max-w-lg shadow-[0_0_50px_rgba(124,58,237,0.3)]">
-                        <div className="bg-[#7C3AED] text-white p-6">
-                            <span className={fontMono} style={{ color: 'white' }}>Management</span>
-                            <h2 className={`${fontDisplay} text-3xl mt-2`}>Edit {selectedOrg?.name}</h2>
-                        </div>
-                        
-                        <div className="p-8 space-y-6">
+                <div className="fixed inset-0 z-50 bg-[#1a1c1e]/10 backdrop-blur-sm flex items-center justify-center p-8">
+                    <form onSubmit={handleUpdateTenant} className="bg-[#f7f3ee] border border-[#1a1c1e]/10 shadow-2xl w-full max-w-lg relative p-8">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-[#c5a059]" />
+                        <h2 className="font-extrabold text-2xl mb-2 text-[#1a1c1e]">EDIT TENANT</h2>
+                        <p className={`${jetbrains.className} text-xs text-[#8e9196] mb-8`}>MODIFY PARAMS FOR {selectedOrg?.name.toUpperCase()}</p>
+
+                        <div className="space-y-6">
                             <div>
-                                <label className={`${fontMono} text-white/60 block mb-2`}>Subscription Plan</label>
+                                <label className={`${jetbrains.className} text-xs uppercase block mb-2 text-[#4a4d52]`}>Plan</label>
                                 <select 
-                                    value={editPlan}
-                                    onChange={(e) => setEditPlan(e.target.value)}
-                                    className="w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 text-lg text-white focus:border-[#7C3AED] outline-none transition-colors appearance-none"
+                                    value={editPlan} 
+                                    onChange={e => setEditPlan(e.target.value)}
+                                    className={`w-full bg-white/50 border border-[#1a1c1e]/20 p-3 text-[#1a1c1e] outline-none focus:border-[#c5a059] transition-colors ${jetbrains.className} text-sm`}
                                 >
                                     <option value="free">FREE</option>
                                     <option value="pro">PRO</option>
                                     <option value="enterprise">ENTERPRISE</option>
                                 </select>
                             </div>
-                            
                             <div>
-                                <label className={`${fontMono} text-white/60 block mb-2`}>Storage Limit (GB)</label>
-                                <input
+                                <label className={`${jetbrains.className} text-xs uppercase block mb-2 text-[#4a4d52]`}>Storage Limit</label>
+                                <input 
                                     type="number"
                                     value={editLimit}
-                                    onChange={(e) => setEditLimit(parseInt(e.target.value))}
-                                    className="w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 text-lg text-white focus:border-[#7C3AED] outline-none transition-colors"
-                                    required
-                                    min="1"
+                                    onChange={e => setEditLimit(Number(e.target.value))}
+                                    className={`w-full bg-white/50 border border-[#1a1c1e]/20 p-3 text-[#1a1c1e] outline-none focus:border-[#c5a059] transition-colors ${jetbrains.className} text-sm`}
                                 />
                             </div>
-                            
-                            {error && (
-                                <div className="p-4 border-[3px] border-red-500 text-red-400 flex items-center gap-3 bg-red-500/10">
-                                    <AlertCircle className="w-5 h-5" />
-                                    <span className={fontMono}>{error}</span>
-                                </div>
-                            )}
                         </div>
-                        
-                        <div className="grid grid-cols-2 border-t-[3px] border-white">
-                            <button
-                                type="button"
-                                onClick={() => setShowEditModal(false)}
-                                className={`${fontMono} p-4 text-white hover:bg-white/10 transition-colors`}
-                            >
-                                CANCEL
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={updating}
-                                className={`${fontMono} p-4 bg-white text-black hover:bg-[#7C3AED] hover:text-white transition-colors flex items-center justify-center gap-2`}
-                            >
-                                {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+
+                        <div className="flex gap-4 mt-8 pt-6 border-t border-[#1a1c1e]/10">
+                            <button type="button" onClick={() => setShowEditModal(false)} className={`${jetbrains.className} text-xs px-4 py-3 hover:bg-[#1a1c1e]/5`}>CANCEL</button>
+                            <button disabled={updating} className={`${jetbrains.className} flex-1 bg-[#1a1c1e] text-[#f7f3ee] text-xs px-4 py-3 hover:shadow-lg transition-all`}>
                                 SAVE CHANGES
                             </button>
                         </div>
