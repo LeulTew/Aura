@@ -7,11 +7,15 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { name, slug, plan, storage_limit_gb } = body;
 
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+        if (!supabaseUrl || !serviceKey) {
+            throw new Error(`Missing config: URL=${!!supabaseUrl}, Key=${!!serviceKey} (Check .env.local for SUPABASE_SERVICE_ROLE_KEY)`);
+        }
+
         // Init Service Role Client (Bypasses RLS)
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
+        const supabase = createClient(supabaseUrl, serviceKey);
 
         // Insert Organization
         const { data, error } = await supabase
