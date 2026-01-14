@@ -349,56 +349,14 @@ export default function AdminPage() {
   }, [photos]);
 
   if (!token) {
+    // Already redirected to /login in useEffect, show loading state
     return (
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden font-sans">
-        <VoidBackground />
-        
-        <form onSubmit={handleLogin} className="w-full max-w-md backdrop-blur-3xl bg-white/[0.02] p-12 rounded-[32px] border border-white/10 z-10 hover:border-white/20 transition-all shadow-2xl">
-          <div className="flex flex-col items-center mb-12">
-            <div className="w-16 h-16 bg-gradient-to-br from-[var(--accent)] to-[#6366f1] rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/20">
-              <Upload className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-light text-white tracking-[0.2em] uppercase">Cloud Terminal</h1>
-            <p className="text-white/30 font-mono text-[10px] mt-3 tracking-widest uppercase">Aura Intelligent Core v2</p>
-          </div>
-
-          <div className="space-y-8">
-            <div className="relative group">
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="••••"
-                className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-6 py-5 text-center text-4xl tracking-[0.6em] font-mono focus:border-[var(--accent)]/50 focus:bg-black/60 outline-none transition-all placeholder:text-white/5 text-white"
-                autoFocus
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full h-16 bg-white text-black font-mono text-xs font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Authenticate"}
-            </button>
-          </div>
-
-          {error && (
-            <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-xs font-mono">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
-          
-          <div className="mt-12 text-center">
-             <Link href="/" className="text-white/20 text-[10px] uppercase tracking-widest hover:text-white transition-colors">
-                ← Return to Surface
-             </Link>
-          </div>
-        </form>
+      <main className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#7C3AED] animate-spin" />
       </main>
     );
   }
+
 
   return (
     <main className="min-h-screen bg-[#050505] text-white font-sans relative">
