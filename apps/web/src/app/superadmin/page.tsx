@@ -267,18 +267,24 @@ export default function SuperAdminPage() {
 
                 .logout-btn {
                     font-family: ${jetbrains.style.fontFamily};
-                    background: none;
-                    border: none;
+                    background: transparent;
+                    border: 1px solid var(--ink-medium);
+                    padding: 0.5rem 1rem;
                     text-decoration: none;
-                    color: var(--ink-light);
-                    font-size: 0.8rem;
-                    border-bottom: 1px solid transparent;
+                    color: var(--ink-deep);
+                    font-size: 0.75rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
                     transition: all 0.3s ease;
                     cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
                 }
 
                 .logout-btn:hover {
-                    color: var(--ink-deep);
+                    background: var(--ink-deep);
+                    color: var(--vellum-base);
                     border-color: var(--ink-deep);
                 }
 
