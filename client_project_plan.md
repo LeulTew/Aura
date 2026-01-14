@@ -22,12 +22,12 @@ The Aura Pro platform follows a multi-tenant architecture where all users authen
 
 ### User Roles & Permissions
 
-| Role | Portal | Capabilities |
-|------|--------|--------------|
+| Role           | Portal        | Capabilities                                                                                                           |
+| -------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **SuperAdmin** | `/superadmin` | Full platform access: Manage tenants, view all usage metrics, set billing limits, system health monitoring, audit logs |
-| **Admin** | `/admin` | Studio management: Employees, sources, photos, bundles, settings. Can invite employees and manage storage |
-| **Employee** | `/capture` | Upload photos, create bundles, view assigned events. Cannot delete photos or access settings |
-| **Guest** | `/scan` | Face-scan to find their photos in a specific event. No account required, session-based |
+| **Admin**      | `/admin`      | Studio management: Employees, sources, photos, bundles, settings. Can invite employees and manage storage              |
+| **Employee**   | `/capture`    | Upload photos, create bundles, view assigned events. Cannot delete photos or access settings                           |
+| **Guest**      | `/scan`       | Face-scan to find their photos in a specific event. No account required, session-based                                 |
 
 ### Storage Architecture (Ethiopia-Optimized)
 
@@ -39,6 +39,7 @@ Designed for Ethiopian market conditions where internet connectivity can be unre
 1. **Event Photography (Mobile)**: Photographers at events upload directly to "Event Temp Storage" using mobile data. Photos are marked as temporary and can be reviewed/archived later at the studio.
 
 2. **Studio Workflow (Local Primary)**: Studios register local folders (e.g., `D:\Photos\2026`) as sources. The Sync Agent monitors these folders and performs:
+
    - **Offline Queue**: Actions queued in IndexedDB when offline
    - **Delta Sync**: Only changed files synced, reducing bandwidth
    - **Bandwidth Limit**: Configurable upload speed to avoid saturating connection
@@ -64,13 +65,13 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ### RLS Policy Summary
 
-| Table | SuperAdmin | Admin | Employee |
-|-------|------------|-------|----------|
-| organizations | ALL | SELECT own | SELECT own |
-| profiles | ALL | SELECT org | SELECT org |
-| photos | ALL | ALL org | SELECT/INSERT org |
-| bundles | ALL | ALL org | SELECT/INSERT org |
-| usage_logs | ALL | SELECT org | - |
+| Table         | SuperAdmin | Admin      | Employee          |
+| ------------- | ---------- | ---------- | ----------------- |
+| organizations | ALL        | SELECT own | SELECT own        |
+| profiles      | ALL        | SELECT org | SELECT org        |
+| photos        | ALL        | ALL org    | SELECT/INSERT org |
+| bundles       | ALL        | ALL org    | SELECT/INSERT org |
+| usage_logs    | ALL        | SELECT org | -                 |
 
 ### Authentication Flow
 
@@ -130,6 +131,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 **Goal**: Role-based access control and SuperAdmin management portal.
 
 #### 5A: Database Foundation [DONE]
+
 - [x] **Organizations Table**: Tenants with plan limits and storage tracking
 - [x] **Profiles Table**: Users with roles (superadmin/admin/employee)
 - [x] **RLS Policies**: Strict tenant isolation via `org_id` filtering
@@ -137,27 +139,39 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **SuperAdmin Portal**: `/superadmin` route with tenant CRUD and stats dashboard
 
 #### 5B: SuperAdmin Portal Enhancements [PARTIAL]
+
 - [x] **Usage Dashboard**: Activity feed implemented, chart visualizations pending
 - [ ] **Billing Management**: Upgrade plans, set custom limits, overage alerts
 - [ ] **Audit Logging**: Track all superadmin actions with timestamps
 - [ ] **Tenant Onboarding**: Email workflow for new tenant invites
 
 #### 5C: Tenant Admin Scoping [DONE]
+
 - [x] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
 - [x] **Employee Management**: /admin/team page with invite modal, role assignment, member removal
 - [x] **Usage Tracking**: Middleware implemented in main.py (log_usage, update_storage_stats)
+
+#### 5D: Design Consistency [DONE]
+
+- [x] **Audit**: `/admin/team` and `/admin/sources` for Editorial Dark theme
+- [x] **Refinement**: Standardized headers, buttons, and typography
 
 ### Phase 6: Hybrid Storage [PLANNED]
 
 **Goal**: Local + Cloud sources optimized for Ethiopian market conditions.
 
-#### 6A: Cloud Enhancements [TODO]
+#### 6A: Cloud Enhancements [DONE]
+
 - [x] **Source Types**: `source_type` column verified in schema
 - [x] **Sources UI**: /admin/sources page with type visualization
-- [ ] **Event Temp Tier**: Auto-cleanup after 30 days, convert to permanent on approval
+- [x] **Event Temp Tier**: Auto-cleanup after 30 days, convert to permanent on approval
+- [x] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
+- [x] **Nested Paths**: Uploads use `{org_slug}/{year}/...` structure
 
-#### 6B: Sync Agent (Desktop App) [TODO]
-- [ ] **Desktop App**: Electron/Tauri application for Windows/Mac
+#### 6B: Sync Agent (Desktop App) [PARTIAL]
+
+- [x] **Scaffolding**: React frontend created (apps/sync-agent)
+- [ ] **Desktop App**: Electron/Tauri application for Windows/Mac (Requires Rust)
 - [ ] **Folder Watch**: Monitor registered local directories for changes
 - [ ] **Offline Queue**: IndexedDB-based queue for actions during offline periods
 - [ ] **Delta Sync**: Only sync file changes, not full files
@@ -169,30 +183,31 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ## 🛡 Security & Compliance
 
-| Concern | Solution |
-|---------|----------|
-| **Tenant Data Isolation** | RLS policies with `org_id` on all queries, tested extensively |
-| **SuperAdmin Abuse Prevention** | Audit logging for all superadmin actions with IP and timestamp |
-| **Sync Agent Security** | Scoped API keys per tenant (not service_role), rotatable |
-| **Rate Limiting** | Per-tenant quotas enforced at API level, configurable limits |
-| **Guest Privacy** | Face embeddings computed client-side, never stored for guests |
-| **Data at Rest** | Supabase encryption, optional customer-managed keys (enterprise) |
+| Concern                         | Solution                                                         |
+| ------------------------------- | ---------------------------------------------------------------- |
+| **Tenant Data Isolation**       | RLS policies with `org_id` on all queries, tested extensively    |
+| **SuperAdmin Abuse Prevention** | Audit logging for all superadmin actions with IP and timestamp   |
+| **Sync Agent Security**         | Scoped API keys per tenant (not service_role), rotatable         |
+| **Rate Limiting**               | Per-tenant quotas enforced at API level, configurable limits     |
+| **Guest Privacy**               | Face embeddings computed client-side, never stored for guests    |
+| **Data at Rest**                | Supabase encryption, optional customer-managed keys (enterprise) |
 
 ---
 
 ## 🔧 Tech Stack Summary
 
-| Layer | Technology | Notes |
-|-------|------------|-------|
-| **Frontend** | Next.js 15, React 18 | App Router, Server Components |
-| **Styling** | Vanilla CSS | Editorial design system |
-| **Backend** | FastAPI (Python 3.11) | Async, auto-docs with OpenAPI |
-| **ML** | InsightFace | 512-dim embeddings, ~50ms/face |
-| **Database** | Supabase PostgreSQL + pgvector | RLS, realtime, edge functions |
-| **Storage** | Supabase Storage | S3-compatible, CDN, signed URLs |
-| **Auth** | Supabase Auth + Custom JWT | Role-based, org-scoped |
-| **Desktop** | Electron/Tauri | Phase 6 - Sync Agent |
-| **Deployment** | Vercel + Cloud Run | Frontend + Backend |
+| Layer          | Technology                     | Notes                           |
+| -------------- | ------------------------------ | ------------------------------- |
+| **Frontend**   | Next.js 15, React 18           | App Router, Server Components   |
+| **Styling**    | Vanilla CSS                    | Editorial design system         |
+| **Backend**    | FastAPI (Python 3.11)          | Async, auto-docs with OpenAPI   |
+| **ML**         | InsightFace                    | 512-dim embeddings, ~50ms/face  |
+| **Database**   | Supabase PostgreSQL + pgvector | RLS, realtime, edge functions   |
+| **Storage**    | Supabase Storage               | S3-compatible, CDN, signed URLs |
+| **Auth**       | Supabase Auth + Custom JWT     | Role-based, org-scoped          |
+| **Desktop**    | Electron/Tauri                 | Phase 6 - Sync Agent            |
+| **Deployment** | Vercel + Cloud Run             | Frontend + Backend              |
+
 ---
 
 ## 🔐 Phase 5.5: User & Access Management Workflows [NEW]
@@ -205,14 +220,14 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 sequenceDiagram
     SuperAdmin->>Aura: Login at /login
     Aura-->>SuperAdmin: Redirect to /superadmin
-    
+
     Note over SuperAdmin: Tenant Provisioning
     SuperAdmin->>Aura: Create New Organization
     Aura->>DB: INSERT organizations
     SuperAdmin->>Aura: Create Primary Admin for Org
     Aura->>DB: INSERT profiles (role=admin, org_id)
     Aura->>Email: Send invite to admin@tenant.com
-    
+
     Note over SuperAdmin: Tenant Management
     SuperAdmin->>Aura: View Usage Dashboard
     Aura-->>SuperAdmin: Storage, API calls, searches per tenant
@@ -238,12 +253,12 @@ sequenceDiagram
     TenantAdmin->>Aura: Set Password
     TenantAdmin->>Aura: Login at /login
     Aura-->>TenantAdmin: Redirect to /admin
-    
+
     Note over TenantAdmin: Employee Management
     TenantAdmin->>Aura: Invite Employee
     Aura->>DB: INSERT profiles (role=employee, org_id)
     Aura->>Email: Send credentials/setup link
-    
+
     Note over TenantAdmin: Photo Management
     TenantAdmin->>Aura: Upload Photos (Drag/Drop)
     TenantAdmin->>Aura: Connect Folder Source (Sync Agent)
@@ -316,12 +331,12 @@ supabase-storage/
 
 > **Goal**: Bidirectional sync between local studio servers and cloud, with robust conflict handling and data safety.
 
-### 6A: Cloud Storage Enhancements [UPDATED]
+### 6A: Cloud Storage Enhancements [DONE]
 
-- [ ] **Source Types**: `source_type` column already in schema (cloud/local_sync/event_temp)
-- [ ] **Sources Management UI**: `/admin/sources` for registering local folders
-- [ ] **Event Temp Auto-Cleanup**: 30-day TTL with admin approval for permanence
-- [ ] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
+- [x] **Source Types**: `source_type` column already in schema (cloud/local_sync/event_temp)
+- [x] **Sources Management UI**: `/admin/sources` for registering local folders
+- [x] **Event Temp Auto-Cleanup**: 30-day TTL with admin approval for permanence
+- [x] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
 
 ### 6B: Bidirectional Sync Agent [NEW SPECIFICATION]
 
@@ -407,12 +422,12 @@ sync_agent:
     sync_metadata: true
 ```
 
-### 6C: Data Safety & Backup [NEW]
+### 6C: Data Safety & Backup [DONE]
 
-| Feature              | Implementation                                     |
-| -------------------- | -------------------------------------------------- |
-| **Trash Folder**     | Cloud: `{org_slug}/.trash/`, Local: `.aura_trash/` |
-| **Retention Period** | 30 days default, configurable per tenant           |
-| **Restore API**      | `POST /api/trash/restore/{id}`                     |
-| **Permanent Delete** | Requires admin confirmation + audit log            |
-| **Backup Export**    | Admin can export all org data as ZIP (planned)     |
+| Feature              | Implementation                                     | Status |
+| -------------------- | -------------------------------------------------- | ------ |
+| **Trash Folder**     | Cloud: `{org_slug}/.trash/`, Local: `.aura_trash/` | ✅     |
+| **Retention Period** | 30 days default, configurable per tenant           | ✅     |
+| **Restore API**      | `POST /api/trash/restore/{id}`                     | ✅     |
+| **Permanent Delete** | Requires admin confirmation + audit log            | ✅     |
+| **Backup Export**    | Admin can export all org data as ZIP (planned)     | ⏳     |

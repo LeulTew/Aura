@@ -1,6 +1,16 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
+// Mock window.location
+Object.defineProperty(window, 'location', {
+  value: {
+    href: '',
+    assign: jest.fn(),
+    reload: jest.fn(),
+  },
+  writable: true,
+})
+
 // Mock Supabase BEFORE importing AdminPage
 jest.mock('@/lib/supabase', () => ({
   supabase: {

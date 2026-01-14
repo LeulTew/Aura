@@ -55,7 +55,6 @@ export default function TrashPage() {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     // Design Tokens (Editorial Dark)
-    const accentColor = '#7C3AED';
     const fontDisplay = "font-sans font-black uppercase leading-[0.85] tracking-[-0.04em]";
     const fontMono = "font-mono text-xs uppercase tracking-[0.2em] font-medium";
 
@@ -79,6 +78,7 @@ export default function TrashPage() {
 
     useEffect(() => {
         if (orgId) fetchTrash();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orgId]);
 
     const fetchTrash = async () => {
@@ -92,7 +92,7 @@ export default function TrashPage() {
             } else {
                 setError(data.error || 'Failed to fetch trash');
             }
-        } catch (err) {
+        } catch (_err) {
             setError('Network error');
         } finally {
             setLoading(false);
@@ -118,7 +118,7 @@ export default function TrashPage() {
             } else {
                 setError(data.error || 'Restore failed');
             }
-        } catch (err) {
+        } catch (_err) {
             setError('Network error during restore');
         } finally {
             setActionLoading(null);
@@ -144,7 +144,7 @@ export default function TrashPage() {
             } else {
                 setError(data.error || 'Delete failed');
             }
-        } catch (err) {
+        } catch (_err) {
             setError('Network error during delete');
         } finally {
             setActionLoading(null);
