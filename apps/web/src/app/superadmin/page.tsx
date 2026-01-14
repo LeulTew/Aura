@@ -84,36 +84,27 @@ export default function SuperAdminPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data: orgData } = await supabase
-                .from('organizations')
-                .select('*')
-                .order('created_at', { ascending: false });
+            // 1. Fetch Organizations (Server-Side)
+            const orgRes = await fetch('/api/superadmin/organizations');
+            const orgResult = await orgRes.json();
+            if (orgResult.error) throw new Error(orgResult.error);
+            setOrgs(orgResult.data || []);
             
-            setOrgs(orgData || []);
-            
-            // Stats
-            const { count: photoCount } = await supabase
-                .from('photos')
-                .select('*', { count: 'exact', head: true });
-            
-            setStats({
-                total_tenants: orgData?.length || 0,
-                active_tenants: orgData?.filter(o => o.is_active).length || 0,
-                total_photos: photoCount || 0,
-                total_storage_gb: orgData?.reduce((acc, o) => acc + (o.storage_used_bytes || 0), 0) / (1024 * 1024 * 1024) || 0
-            });
+            // 2. Fetch Stats (Server-Side)
+            const statRes = await fetch('/api/superadmin/stats');
+            const statResult = await statRes.json();
+            if (statResult.error) throw new Error(statResult.error);
+            setStats(statResult.data); // Fixed structure in API
 
-            // Logs
-            const { data: logData } = await supabase
-                .from('usage_logs')
-                .select('*, organizations(name)')
-                .order('created_at', { ascending: false })
-                .limit(20);
-            
-            setLogs(logData || []);
+            // 3. Fetch Logs (Server-Side)
+            const logRes = await fetch('/api/superadmin/logs');
+            const logResult = await logRes.json();
+            if (logResult.error) throw new Error(logResult.error);
+            setLogs(logResult.data || []);
             
         } catch (err: any) {
             console.error("Fetch error:", err);
+            setError("Failed to load dashboard data: " + err.message);
         } finally {
             setLoading(false);
         }
