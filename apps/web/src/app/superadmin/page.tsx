@@ -226,7 +226,7 @@ export default function SuperAdminPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white text-black antialiased">
+        <div className="min-h-screen bg-[#050505] text-white antialiased">
             {/* HEADER */}
             <header className="fixed top-0 w-full z-50 bg-black text-white border-b-[3px] border-white">
                 <div className={`${container} flex justify-between items-center py-4 px-8`}>
@@ -286,11 +286,11 @@ export default function SuperAdminPage() {
                 </section>
 
                 {/* ACTIONS BAR */}
-                <section className="py-8 px-8 border-b-[3px] border-black bg-[#F5F5F5]">
+                <section className="py-8 px-8 border-b-[3px] border-white bg-[#0A0A0A]">
                     <div className={`${container} flex justify-between items-center`}>
                         <div>
                             <span className={fontMono} style={{ color: accentColor }}>Organizations</span>
-                            <h2 className={`${fontDisplay} text-3xl mt-1`}>Manage Tenants</h2>
+                            <h2 className={`${fontDisplay} text-3xl mt-1 text-white`}>Manage Tenants</h2>
                         </div>
                         <button 
                             onClick={() => setShowCreateModal(true)}
@@ -309,23 +309,23 @@ export default function SuperAdminPage() {
                         <div className="lg:col-span-2">
                         {loading ? (
                             <div className="flex items-center justify-center py-20">
-                                <Loader2 className="w-8 h-8 animate-spin" />
+                                <Loader2 className="w-8 h-8 animate-spin text-white" />
                             </div>
                         ) : orgs.length === 0 ? (
-                            <div className="py-20 text-center border-[3px] border-black">
-                                <Building2 className="w-12 h-12 mx-auto mb-4 text-black/20" />
-                                <p className={`${fontMono} text-black/40 mb-6`}>No tenants created yet</p>
+                            <div className="py-20 text-center border-[3px] border-white bg-[#0A0A0A]">
+                                <Building2 className="w-12 h-12 mx-auto mb-4 text-white/20" />
+                                <p className={`${fontMono} text-white/40 mb-6`}>No tenants created yet</p>
                                 <button 
                                     onClick={() => setShowCreateModal(true)}
-                                    className="bg-black text-white px-8 py-4 hover:bg-[#7C3AED] transition-colors"
+                                    className="bg-white text-black px-8 py-4 hover:bg-[#7C3AED] hover:text-white transition-colors"
                                 >
                                     <span className={fontMono}>Create First Tenant</span>
                                 </button>
                             </div>
                         ) : (
-                            <div className="border-[3px] border-black">
+                            <div className="border-[3px] border-white bg-[#0A0A0A]">
                                 <table className="w-full">
-                                    <thead className="bg-black text-white">
+                                    <thead className="bg-white text-black">
                                         <tr>
                                             <th className={`${fontMono} text-left p-4`}>Name</th>
                                             <th className={`${fontMono} text-left p-4`}>Slug</th>
@@ -337,26 +337,26 @@ export default function SuperAdminPage() {
                                     </thead>
                                     <tbody>
                                         {orgs.map((org, i) => (
-                                            <tr key={org.id} className={`border-t-[3px] border-black ${i % 2 === 0 ? 'bg-white' : 'bg-[#F5F5F5]'}`}>
+                                            <tr key={org.id} className={`border-t-[1px] border-white/20 ${i % 2 === 0 ? 'bg-black' : 'bg-[#0A0A0A]'}`}>
                                                 <td className="p-4">
-                                                    <div className="font-bold">{org.name}</div>
-                                                    <div className={`${fontMono} text-black/40`}>{org.id.slice(0, 8)}</div>
+                                                    <div className="font-bold text-white">{org.name}</div>
+                                                    <div className={`${fontMono} text-white/40`}>{org.id.slice(0, 8)}</div>
                                                 </td>
-                                                <td className={`${fontMono} p-4`}>{org.slug}</td>
+                                                <td className={`${fontMono} p-4 text-white/60`}>{org.slug}</td>
                                                 <td className="p-4">
                                                     <span className={`${fontMono} px-3 py-1 border-[2px] ${
-                                                        org.plan === 'enterprise' ? 'border-purple-500 text-purple-600' :
-                                                        org.plan === 'pro' ? 'border-blue-500 text-blue-600' :
-                                                        'border-black text-black'
+                                                        org.plan === 'enterprise' ? 'border-purple-500 text-purple-400' :
+                                                        org.plan === 'pro' ? 'border-blue-500 text-blue-400' :
+                                                        'border-white/20 text-white/60'
                                                     }`}>
                                                         {org.plan.toUpperCase()}
                                                     </span>
                                                 </td>
                                                 <td className="p-4">
-                                                    <div className={fontMono}>{formatBytes(org.storage_used_bytes)} / {org.storage_limit_gb}GB</div>
-                                                    <div className="w-24 h-2 bg-black/10 mt-1">
+                                                    <div className={`${fontMono} text-white/80`}>{formatBytes(org.storage_used_bytes)} / {org.storage_limit_gb}GB</div>
+                                                    <div className="w-24 h-2 bg-white/10 mt-1">
                                                         <div 
-                                                            className="h-full bg-black"
+                                                            className="h-full bg-[#7C3AED]"
                                                             style={{ width: `${Math.min((org.storage_used_bytes / (org.storage_limit_gb * 1024 * 1024 * 1024)) * 100, 100)}%` }}
                                                         />
                                                     </div>
@@ -376,7 +376,7 @@ export default function SuperAdminPage() {
                                                     <div className="flex justify-end gap-2">
                                                         <button 
                                                             onClick={() => openEditModal(org)}
-                                                            className={`${fontMono} px-4 py-2 border-[2px] border-black hover:bg-black hover:text-white transition-colors`}
+                                                            className={`${fontMono} px-4 py-2 border-[2px] border-white/20 text-white hover:bg-white hover:text-black transition-colors`}
                                                         >
                                                             EDIT
                                                         </button>
@@ -384,8 +384,8 @@ export default function SuperAdminPage() {
                                                             onClick={() => toggleTenantStatus(org)}
                                                             className={`${fontMono} px-4 py-2 border-[2px] transition-colors ${
                                                                 org.is_active 
-                                                                    ? 'border-red-500 text-red-600 hover:bg-red-500 hover:text-white' 
-                                                                    : 'border-green-500 text-green-600 hover:bg-green-500 hover:text-white'
+                                                                    ? 'border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white' 
+                                                                    : 'border-green-500/50 text-green-400 hover:bg-green-500 hover:text-white'
                                                             }`}
                                                         >
                                                             {org.is_active ? 'SUSPEND' : 'ACTIVATE'}
@@ -402,30 +402,30 @@ export default function SuperAdminPage() {
 
                         {/* RIGHT: ACTIVITY FEED */}
                         <div className="lg:col-span-1">
-                            <div className="border-[3px] border-black bg-white">
-                                <div className="bg-black text-white p-4">
+                            <div className="border-[3px] border-white bg-black">
+                                <div className="bg-white text-black p-4">
                                     <h3 className={fontMono}>Platform Activity</h3>
                                 </div>
-                                <div className="divide-y-[3px] divide-black max-h-[600px] overflow-y-auto">
+                                <div className="divide-y-[1px] divide-white/10 max-h-[600px] overflow-y-auto">
                                     {logs.length === 0 ? (
-                                        <div className="p-8 text-center text-black/40">
+                                        <div className="p-8 text-center text-white/40">
                                             <p className={fontMono}>No recent activity</p>
                                         </div>
                                     ) : (
                                         logs.map((log) => (
-                                            <div key={log.id} className="p-4 hover:bg-[#F5F5F5] transition-colors">
+                                            <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className={`${fontMono} text-[10px] bg-black text-white px-2 py-0.5`}>
+                                                    <span className={`${fontMono} text-[10px] bg-[#7C3AED] text-white px-2 py-0.5`}>
                                                         {log.action.toUpperCase()}
                                                     </span>
-                                                    <span className="text-[10px] text-black/40 font-mono">
+                                                    <span className="text-[10px] text-white/40 font-mono">
                                                         {new Date(log.created_at).toLocaleTimeString()}
                                                     </span>
                                                 </div>
-                                                <div className="text-sm font-bold">
+                                                <div className="text-sm font-bold text-white">
                                                     {log.organizations?.name || 'Unknown Tenant'}
                                                 </div>
-                                                <div className="text-xs text-black/60 truncate">
+                                                <div className="text-xs text-white/60 truncate">
                                                     {log.action === 'upload' ? `Processed ${formatBytes(log.bytes_processed)}` : 
                                                      log.action === 'search' ? `Face search performed` :
                                                      log.action === 'bundle_create' ? `Bundle created: ${log.metadata?.name || 'unnamed'}` :
@@ -435,15 +435,15 @@ export default function SuperAdminPage() {
                                         ))
                                     )}
                                 </div>
-                                <div className="p-4 bg-[#F5F5F5] border-t-[3px] border-black text-center">
-                                    <Link href="/superadmin/logs" className={`${fontMono} text-[10px] hover:underline`}>
+                                <div className="p-4 bg-white/5 border-t-[3px] border-white text-center">
+                                    <Link href="/superadmin/logs" className={`${fontMono} text-[10px] text-white/60 hover:text-white hover:underline`}>
                                         View Full Audit Log
                                     </Link>
                                 </div>
                             </div>
 
                             {/* SYSTEM STATUS CARD */}
-                            <div className="mt-8 border-[3px] border-black p-6 bg-[#7C3AED] text-white">
+                            <div className="mt-8 border-[3px] border-white p-6 bg-[#7C3AED] text-white">
                                 <h3 className={`${fontMono} mb-4`}>System Health</h3>
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center text-sm">
@@ -465,18 +465,18 @@ export default function SuperAdminPage() {
                 </section>
             </main>
 
-            {/* CREATE TENANT MODAL */}
+             {/* CREATE TENANT MODAL */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-8">
-                    <form onSubmit={handleCreateTenant} className="bg-white border-[3px] border-black w-full max-w-lg">
-                        <div className="bg-black text-white p-6">
-                            <span className={fontMono} style={{ color: accentColor }}>New Organization</span>
+                <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-8 backdrop-blur-sm">
+                    <form onSubmit={handleCreateTenant} className="bg-black border-[3px] border-white w-full max-w-lg shadow-[0_0_50px_rgba(124,58,237,0.3)]">
+                        <div className="bg-[#7C3AED] text-white p-6">
+                            <span className={fontMono} style={{ color: 'white' }}>New Organization</span>
                             <h2 className={`${fontDisplay} text-3xl mt-2`}>Create Tenant</h2>
                         </div>
                         
                         <div className="p-8 space-y-6">
                             <div>
-                                <label className={`${fontMono} text-black/60 block mb-2`}>Organization Name</label>
+                                <label className={`${fontMono} text-white/60 block mb-2`}>Organization Name</label>
                                 <input
                                     type="text"
                                     value={newTenantName}
@@ -485,45 +485,45 @@ export default function SuperAdminPage() {
                                         setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-'));
                                     }}
                                     placeholder="Studio ABC"
-                                    className="w-full border-[3px] border-black p-4 text-lg focus:border-[#7C3AED] outline-none transition-colors"
+                                    className="w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 text-lg text-white focus:border-[#7C3AED] outline-none transition-colors"
                                     required
                                     autoFocus
                                 />
                             </div>
                             
                             <div>
-                                <label className={`${fontMono} text-black/60 block mb-2`}>URL Slug</label>
+                                <label className={`${fontMono} text-white/60 block mb-2`}>URL Slug</label>
                                 <input
                                     type="text"
                                     value={newTenantSlug}
                                     onChange={(e) => setNewTenantSlug(e.target.value)}
                                     placeholder="studio-abc"
-                                    className={`w-full border-[3px] border-black p-4 ${fontMono} focus:border-[#7C3AED] outline-none transition-colors`}
+                                    className={`w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 ${fontMono} text-white focus:border-[#7C3AED] outline-none transition-colors`}
                                     required
                                 />
-                                <p className={`${fontMono} text-black/40 mt-2`}>aura.app/{newTenantSlug || 'slug'}</p>
+                                <p className={`${fontMono} text-white/40 mt-2`}>aura.app/{newTenantSlug || 'slug'}</p>
                             </div>
                             
                             {error && (
-                                <div className="p-4 border-[3px] border-red-500 text-red-600 flex items-center gap-3">
+                                <div className="p-4 border-[3px] border-red-500 text-red-400 flex items-center gap-3 bg-red-500/10">
                                     <AlertCircle className="w-5 h-5" />
                                     <span className={fontMono}>{error}</span>
                                 </div>
                             )}
                         </div>
                         
-                        <div className="grid grid-cols-2 border-t-[3px] border-black">
+                        <div className="grid grid-cols-2 border-t-[3px] border-white">
                             <button
                                 type="button"
                                 onClick={() => setShowCreateModal(false)}
-                                className={`${fontMono} p-4 hover:bg-[#F5F5F5] transition-colors`}
+                                className={`${fontMono} p-4 text-white hover:bg-white/10 transition-colors`}
                             >
                                 CANCEL
                             </button>
                             <button
                                 type="submit"
                                 disabled={creating}
-                                className={`${fontMono} p-4 bg-black text-white hover:bg-[#7C3AED] transition-colors flex items-center justify-center gap-2`}
+                                className={`${fontMono} p-4 bg-white text-black hover:bg-[#7C3AED] hover:text-white transition-colors flex items-center justify-center gap-2`}
                             >
                                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 CREATE
@@ -533,22 +533,22 @@ export default function SuperAdminPage() {
                 </div>
             )}
 
-            {/* EDIT TENANT MODAL */}
+             {/* EDIT TENANT MODAL */}
             {showEditModal && (
-                <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-8">
-                    <form onSubmit={handleUpdateTenant} className="bg-white border-[3px] border-black w-full max-w-lg">
-                        <div className="bg-black text-white p-6">
-                            <span className={fontMono} style={{ color: accentColor }}>Management</span>
+                <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-8 backdrop-blur-sm">
+                    <form onSubmit={handleUpdateTenant} className="bg-black border-[3px] border-white w-full max-w-lg shadow-[0_0_50px_rgba(124,58,237,0.3)]">
+                        <div className="bg-[#7C3AED] text-white p-6">
+                            <span className={fontMono} style={{ color: 'white' }}>Management</span>
                             <h2 className={`${fontDisplay} text-3xl mt-2`}>Edit {selectedOrg?.name}</h2>
                         </div>
                         
                         <div className="p-8 space-y-6">
                             <div>
-                                <label className={`${fontMono} text-black/60 block mb-2`}>Subscription Plan</label>
+                                <label className={`${fontMono} text-white/60 block mb-2`}>Subscription Plan</label>
                                 <select 
                                     value={editPlan}
                                     onChange={(e) => setEditPlan(e.target.value)}
-                                    className="w-full border-[3px] border-black p-4 text-lg focus:border-[#7C3AED] outline-none transition-colors bg-white appearance-none"
+                                    className="w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 text-lg text-white focus:border-[#7C3AED] outline-none transition-colors appearance-none"
                                 >
                                     <option value="free">FREE</option>
                                     <option value="pro">PRO</option>
@@ -557,37 +557,37 @@ export default function SuperAdminPage() {
                             </div>
                             
                             <div>
-                                <label className={`${fontMono} text-black/60 block mb-2`}>Storage Limit (GB)</label>
+                                <label className={`${fontMono} text-white/60 block mb-2`}>Storage Limit (GB)</label>
                                 <input
                                     type="number"
                                     value={editLimit}
                                     onChange={(e) => setEditLimit(parseInt(e.target.value))}
-                                    className="w-full border-[3px] border-black p-4 text-lg focus:border-[#7C3AED] outline-none transition-colors"
+                                    className="w-full bg-[#0A0A0A] border-[3px] border-white/20 p-4 text-lg text-white focus:border-[#7C3AED] outline-none transition-colors"
                                     required
                                     min="1"
                                 />
                             </div>
                             
                             {error && (
-                                <div className="p-4 border-[3px] border-red-500 text-red-600 flex items-center gap-3">
+                                <div className="p-4 border-[3px] border-red-500 text-red-400 flex items-center gap-3 bg-red-500/10">
                                     <AlertCircle className="w-5 h-5" />
                                     <span className={fontMono}>{error}</span>
                                 </div>
                             )}
                         </div>
                         
-                        <div className="grid grid-cols-2 border-t-[3px] border-black">
+                        <div className="grid grid-cols-2 border-t-[3px] border-white">
                             <button
                                 type="button"
                                 onClick={() => setShowEditModal(false)}
-                                className={`${fontMono} p-4 hover:bg-[#F5F5F5] transition-colors`}
+                                className={`${fontMono} p-4 text-white hover:bg-white/10 transition-colors`}
                             >
                                 CANCEL
                             </button>
                             <button
                                 type="submit"
                                 disabled={updating}
-                                className={`${fontMono} p-4 bg-black text-white hover:bg-[#7C3AED] transition-colors flex items-center justify-center gap-2`}
+                                className={`${fontMono} p-4 bg-white text-black hover:bg-[#7C3AED] hover:text-white transition-colors flex items-center justify-center gap-2`}
                             >
                                 {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 SAVE CHANGES
