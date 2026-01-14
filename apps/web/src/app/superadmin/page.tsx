@@ -129,18 +129,22 @@ export default function SuperAdminPage() {
         setCreating(true);
         setError("");
         try {
-            const { data, error } = await supabase
-                .from('organizations')
-                .insert({
+            // Use Server-Side API to bypass RLS (since client might use admin_token vs auth session)
+            const res = await fetch('/api/superadmin/create-tenant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     name: newTenantName,
                     slug: newTenantSlug,
                     plan: 'free',
                     storage_limit_gb: 5
                 })
-                .select()
-                .single();
+            });
             
-            if (error) throw error;
+            const result = await res.json();
+            
+            if (!result.success) throw new Error(result.error);
+            const data = result.data;
             
             setOrgs(prev => [data, ...prev]);
             setShowCreateModal(false);
@@ -202,17 +206,17 @@ export default function SuperAdminPage() {
                     font-family: inherit !important;
                 }
                 .vellum-theme p, .vellum-theme span, .vellum-theme div, .vellum-theme label {
-                    color: #4a4d52; /* Medium Ink */
+                    color: #4a4d52;
                 }
-                .vellum-theme .text-ink {
-                    color: #1a1c1e !important;
-                }
-                .vellum-theme .text-gold {
-                    color: #c5a059 !important;
-                }
-                .vellum-theme .text-gray-dark {
-                    color: #8e9196 !important;
-                }
+                /* Allow utility classes to override the defaults */
+                .vellum-theme .text-red-600 { color: #dc2626 !important; }
+                .vellum-theme .text-green-600 { color: #16a34a !important; }
+                .vellum-theme .bg-red-400 { background-color: #f87171 !important; }
+                .vellum-theme .bg-[#4f772d] { background-color: #4f772d !important; }
+                
+                .vellum-theme .text-ink { color: #1a1c1e !important; }
+                .vellum-theme .text-gold { color: #c5a059 !important; }
+                .vellum-theme .text-gray-dark { color: #8e9196 !important; }
             `}} />
             {/* GRAIN OVERLAY */}
             <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-[9999]" style={{
