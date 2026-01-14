@@ -56,3 +56,8 @@ apps/core/data/
 ai_rules.md
 .cursorrules
 docs/test_credentials.md
+
+# Rust/Tauri build artifacts
+apps/sync-agent/src-tauri/target/
+apps/sync-agent/dist/
+apps/sync-agent/node_modules/
