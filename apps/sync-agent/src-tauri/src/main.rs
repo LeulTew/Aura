@@ -14,10 +14,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 use watcher::FileWatcher;
+use queue::SyncQueue;
 use tauri::Manager;
 
 mod trash_manager;
 mod watcher;
+mod queue;
 
 /// Represents a file in the local trash
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -254,6 +256,18 @@ fn stop_watch(state: tauri::State<FileWatcher>, path: String) -> Result<(), Stri
     state.unwatch_folder(path)
 }
 
+/// Add item to sync queue
+#[tauri::command]
+fn add_sync_item(state: tauri::State<SyncQueue>, path: String) -> Result<(), String> {
+    state.add_item(path).map_err(|e| e.to_string())
+}
+
+/// Get pending sync items
+#[tauri::command]
+fn get_sync_items(state: tauri::State<SyncQueue>) -> Result<Vec<queue::QueueItem>, String> {
+    state.get_pending(50).map_err(|e| e.to_string())
+}
+
 /// Get sync status summary
 #[tauri::command]
 fn get_sync_status() -> Result<serde_json::Value, String> {
@@ -275,6 +289,14 @@ fn main() {
         .setup(|app| {
             let watcher = FileWatcher::new(app.handle().clone());
             app.manage(watcher);
+            
+            // Setup DB
+            let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(&app_data).map_err(|e| e.to_string())?;
+            let db_path = app_data.join("sync.db");
+            let queue = SyncQueue::new(db_path).map_err(|e| e.to_string())?;
+            app.manage(queue);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -287,6 +309,8 @@ fn main() {
             get_sync_status,
             start_watch,
             stop_watch,
+            add_sync_item,
+            get_sync_items,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
