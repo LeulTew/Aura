@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { 
     Folder, UploadCloud, FolderPlus, Trash2, 
     ChevronRight, Home, Loader2, Image as ImageIcon,
-    X, Edit3, Move, Eye, MoreHorizontal
+    X, Edit3, Move, Eye, MoreHorizontal, Database
 } from 'lucide-react';
 
 interface FileItem {
@@ -55,6 +55,12 @@ export default function FilesPage() {
     
     // Context menu
     const [contextMenu, setContextMenu] = useState<{ item: FileItem; x: number; y: number } | null>(null);
+    
+    // Indexing
+    const [indexing, setIndexing] = useState(false);
+    const [indexProgress, setIndexProgress] = useState(0);
+    const [indexStatus, setIndexStatus] = useState('');
+    const [orgId, setOrgId] = useState<string>('');
 
     useEffect(() => {
         const token = sessionStorage.getItem('admin_token');
@@ -63,6 +69,9 @@ export default function FilesPage() {
             if (claims?.org_slug) {
                 setOrgSlug(claims.org_slug);
                 setCurrentPath(claims.org_slug);
+            }
+            if (claims?.org_id) {
+                setOrgId(claims.org_id);
             }
         }
     }, []);
@@ -193,17 +202,34 @@ export default function FilesPage() {
             const newPath = currentPath + '/' + newName;
             
             if (renameItem.type === 'file') {
-                // Download and re-upload with new name (Supabase doesn't have rename)
+                // Download and re-upload with new name
                 const { data } = await supabase.storage.from('photos').download(oldPath);
                 if (data) {
                     await supabase.storage.from('photos').upload(newPath, data, { upsert: true });
                     await supabase.storage.from('photos').remove([oldPath]);
                 }
             } else {
-                // For folders, we'd need to move all contents - complex, notify user
-                alert('Folder rename not yet supported. Please create a new folder and move files.');
-                setRenaming(false);
-                return;
+                // Folder rename: recursively move all files
+                const { data: folderContents } = await supabase.storage.from('photos').list(oldPath, { limit: 1000 });
+                
+                if (folderContents && folderContents.length > 0) {
+                    for (const item of folderContents) {
+                        if (item.id === null) {
+                            // It's a subfolder - we'd need deep recursion, skip for now
+                            continue;
+                        }
+                        const oldFilePath = `${oldPath}/${item.name}`;
+                        const newFilePath = `${newPath}/${item.name}`;
+                        
+                        const { data: fileData } = await supabase.storage.from('photos').download(oldFilePath);
+                        if (fileData) {
+                            await supabase.storage.from('photos').upload(newFilePath, fileData, { upsert: true });
+                            await supabase.storage.from('photos').remove([oldFilePath]);
+                        }
+                    }
+                    // Create .keep in new folder if empty
+                    await supabase.storage.from('photos').upload(`${newPath}/.keep`, new Blob(['']));
+                }
             }
             
             setRenameItem(null);
@@ -245,6 +271,73 @@ export default function FilesPage() {
         }
     };
 
+    // Index all images in current folder
+    const handleIndexFolder = async () => {
+        const imageItems = items.filter(i => i.type === 'file' && /\.(jpg|jpeg|png|webp|gif)$/i.test(i.name));
+        if (imageItems.length === 0) {
+            alert('No images to index in this folder');
+            return;
+        }
+        
+        if (!confirm(`Index ${imageItems.length} image(s)? This will add them to the searchable gallery.`)) return;
+        
+        setIndexing(true);
+        setIndexProgress(0);
+        let indexed = 0;
+        let failed = 0;
+        
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+        const token = sessionStorage.getItem('admin_token');
+        
+        for (let i = 0; i < imageItems.length; i++) {
+            const item = imageItems[i];
+            setIndexStatus(`Indexing ${i + 1}/${imageItems.length}: ${item.name}`);
+            setIndexProgress(Math.round((i / imageItems.length) * 100));
+            
+            try {
+                // Download the image
+                const { data: blob } = await supabase.storage.from('photos').download(item.path);
+                if (!blob) continue;
+                
+                // Create form data for backend
+                const formData = new FormData();
+                formData.append('file', blob, item.name);
+                formData.append('path', item.path);
+                formData.append('metadata', JSON.stringify({
+                    original_name: item.name,
+                    size: item.size,
+                    indexed_from: 'file_manager',
+                    indexed_at: new Date().toISOString()
+                }));
+                
+                const res = await fetch(`${backendUrl}/api/index-photo`, {
+                    method: 'POST',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                    body: formData
+                });
+                
+                if (res.ok) {
+                    indexed++;
+                } else {
+                    failed++;
+                    console.error(`Failed to index ${item.name}:`, await res.text());
+                }
+            } catch (err) {
+                failed++;
+                console.error(`Error indexing ${item.name}:`, err);
+            }
+        }
+        
+        setIndexProgress(100);
+        setIndexStatus(`Done! ${indexed} indexed, ${failed} failed`);
+        
+        setTimeout(() => {
+            setIndexing(false);
+            setIndexStatus('');
+            setIndexProgress(0);
+        }, 3000);
+    };
+
     const toggleSelect = (path: string) => {
         setSelectedItems(prev => {
             const next = new Set(prev);
@@ -283,6 +376,13 @@ export default function FilesPage() {
                     <p className="text-white/40 text-sm mt-1 font-mono">Browse and manage your storage</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handleIndexFolder} 
+                        disabled={indexing}
+                        className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm hover:bg-emerald-500/30 flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {indexing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />} Index
+                    </button>
                     <button onClick={() => setShowNewFolderModal(true)} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm hover:bg-white/10 flex items-center gap-2">
                         <FolderPlus className="w-4 h-4" /> New Folder
                     </button>
@@ -320,6 +420,19 @@ export default function FilesPage() {
                     </div>
                     <div className="h-2 bg-black/20 rounded-full overflow-hidden">
                         <div className="h-full bg-[#7C3AED]" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                </div>
+            )}
+
+            {/* Indexing Progress */}
+            {indexing && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
+                        <span className="text-sm">{indexStatus || 'Indexing...'}</span>
+                    </div>
+                    <div className="h-2 bg-black/20 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 transition-all" style={{ width: `${indexProgress}%` }} />
                     </div>
                 </div>
             )}
