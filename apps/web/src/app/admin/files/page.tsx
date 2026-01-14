@@ -42,6 +42,28 @@ export default function FilesPage() {
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+
+    // Generate thumbnails for image files
+    useEffect(() => {
+        const generateThumbnails = async () => {
+            const imageItems = items.filter(i => i.type === 'file' && /\.(jpg|jpeg|png|webp|gif)$/i.test(i.name));
+            const newThumbnails: Record<string, string> = {};
+            
+            for (const item of imageItems.slice(0, 30)) { // Limit to first 30
+                if (!thumbnails[item.path]) {
+                    const { data } = await supabase.storage.from('photos').createSignedUrl(item.path, 3600);
+                    if (data?.signedUrl) newThumbnails[item.path] = data.signedUrl;
+                }
+            }
+            
+            if (Object.keys(newThumbnails).length > 0) {
+                setThumbnails(prev => ({ ...prev, ...newThumbnails }));
+            }
+        };
+        
+        if (items.length > 0) generateThumbnails();
+    }, [items]);
 
     useEffect(() => {
         const token = sessionStorage.getItem('admin_token');
@@ -298,6 +320,15 @@ export default function FilesPage() {
                             <div className="flex flex-col items-center text-center">
                                 {item.type === 'folder' ? (
                                     <Folder className="w-12 h-12 text-[#7C3AED]/70 mb-3" />
+                                ) : thumbnails[item.path] ? (
+                                    <div className="w-full aspect-square rounded-lg overflow-hidden mb-2">
+                                        <img 
+                                            src={thumbnails[item.path]} 
+                                            alt={item.name}
+                                            className="w-full h-full object-cover"
+                                            loading="lazy"
+                                        />
+                                    </div>
                                 ) : (
                                     <ImageIcon className="w-12 h-12 text-white/30 mb-3" />
                                 )}
