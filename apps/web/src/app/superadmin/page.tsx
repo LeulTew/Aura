@@ -191,11 +191,29 @@ export default function SuperAdminPage() {
     if (!token) return <div className="min-h-screen bg-[#f7f3ee]" />;
 
     return (
-        <div className={`min-h-screen ${inter.className} relative flex flex-col overflow-x-hidden`} style={{
+        <div className={`min-h-screen ${inter.className} relative flex flex-col overflow-x-hidden vellum-theme`} style={{
             backgroundColor: '#f7f3ee',
             color: '#1a1c1e',
             backgroundImage: 'url("https://www.transparenttextures.com/patterns/felt.png")'
         }}>
+            <style dangerouslySetInnerHTML={{ __html: `
+                .vellum-theme h1, .vellum-theme h2, .vellum-theme h3, .vellum-theme h4, .vellum-theme h5, .vellum-theme h6 {
+                    color: #1a1c1e !important;
+                    font-family: inherit !important;
+                }
+                .vellum-theme p, .vellum-theme span, .vellum-theme div, .vellum-theme label {
+                    color: #4a4d52; /* Medium Ink */
+                }
+                .vellum-theme .text-ink {
+                    color: #1a1c1e !important;
+                }
+                .vellum-theme .text-gold {
+                    color: #c5a059 !important;
+                }
+                .vellum-theme .text-gray-dark {
+                    color: #8e9196 !important;
+                }
+            `}} />
             {/* GRAIN OVERLAY */}
             <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-[9999]" style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
