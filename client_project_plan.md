@@ -156,6 +156,29 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Audit**: `/admin/team` and `/admin/sources` for Editorial Dark theme
 - [x] **Refinement**: Standardized headers, buttons, and typography
 
+#### 5E: Admin UI Navigation Structure [DONE]
+
+**Role-Based Tab Visibility:**
+
+| Tab          | Route             | Admin | Manager | Photographer | Editor |
+| :----------- | :---------------- | :---: | :-----: | :----------: | :----: |
+| Dashboard    | `/admin`          |  ✅   |   ✅    |      ✅      |   ✅   |
+| Upload       | `/admin/capture`  |  ✅   |   ✅    |      ✅      |   ❌   |
+| Gallery      | `/admin/gallery`  |  ✅   |   ✅    |      ✅      |   ✅   |
+| File Manager | `/admin/files`    |  ✅   |   ✅    |      ❌      |   ❌   |
+| Team         | `/admin/team`     |  ✅   |   ❌    |      ❌      |   ❌   |
+| Sources      | `/admin/sources`  |  ✅   |   ✅    |      ❌      |   ❌   |
+| Settings     | `/admin/settings` |  ✅   |   ❌    |      ❌      |   ❌   |
+
+**Employee Labels**: `manager`, `photographer`, `editor` (stored in `profiles.label`)
+
+**Sources Page (`/admin/sources`):**
+| Type | Description | Retention |
+|:---|:---|:---|
+| `cloud` | Direct upload to cloud | Permanent |
+| `local_sync` | Synced from desktop agent | Permanent |
+| `event_temp` | Temporary event photos | 30-day auto-cleanup |
+
 ### Phase 6: Hybrid Storage [PLANNED]
 
 **Goal**: Local + Cloud sources optimized for Ethiopian market conditions.
