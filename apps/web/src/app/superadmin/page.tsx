@@ -226,6 +226,14 @@ export default function SuperAdminPage() {
                     background-image: var(--grain);
                 }
 
+                /* Force headers to ink color to override global dark theme */
+                .vellum-wrapper h1, .vellum-wrapper h2, .vellum-wrapper h3, .vellum-wrapper h4 {
+                    color: var(--ink-deep) !important;
+                }
+                .vellum-wrapper p, .vellum-wrapper span, .vellum-wrapper div, .vellum-wrapper label {
+                    color: var(--ink-medium);
+                }
+                
                 /* Vellum Etched Header */
                 .vellum-nav {
                     padding: 2rem 4rem;
