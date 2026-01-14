@@ -233,6 +233,12 @@ export default function SuperAdminPage() {
                 .vellum-wrapper p, .vellum-wrapper span, .vellum-wrapper div, .vellum-wrapper label {
                     color: var(--ink-medium);
                 }
+
+                /* Allow utility classes to override the defaults */
+                .vellum-wrapper .text-red-600 { color: #dc2626 !important; }
+                .vellum-wrapper .text-green-600 { color: #16a34a !important; }
+                .vellum-wrapper .bg-red-400 { background-color: #f87171 !important; }
+                .vellum-wrapper .bg-[#4f772d] { background-color: #4f772d !important; }
                 
                 /* Vellum Etched Header */
                 .vellum-nav {
