@@ -13,8 +13,11 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+use watcher::FileWatcher;
+use tauri::Manager;
 
 mod trash_manager;
+mod watcher;
 
 /// Represents a file in the local trash
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -239,6 +242,18 @@ fn cleanup_expired_trash(base_folder: String) -> Result<u32, String> {
     Ok(deleted_count)
 }
 
+/// Start watching a folder for changes
+#[tauri::command]
+fn start_watch(state: tauri::State<FileWatcher>, path: String) -> Result<(), String> {
+    state.watch_folder(path)
+}
+
+/// Stop watching a folder
+#[tauri::command]
+fn stop_watch(state: tauri::State<FileWatcher>, path: String) -> Result<(), String> {
+    state.unwatch_folder(path)
+}
+
 /// Get sync status summary
 #[tauri::command]
 fn get_sync_status() -> Result<serde_json::Value, String> {
@@ -257,6 +272,11 @@ fn main() {
     
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            let watcher = FileWatcher::new(app.handle().clone());
+            app.manage(watcher);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             init_trash_dir,
             move_to_trash,
@@ -265,6 +285,8 @@ fn main() {
             permanent_delete,
             cleanup_expired_trash,
             get_sync_status,
+            start_watch,
+            stop_watch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
