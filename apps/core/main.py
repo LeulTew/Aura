@@ -113,7 +113,10 @@ def get_auth_context(authorization: str = Header(None)):
 # ... existing endpoints ...
 
 @app.post("/api/match/mine", response_model=MatchResponse)
-async def match_mine(user_id: str = Query(..., description="The Supabase Auth User ID")):
+async def match_mine(
+    user_id: str = Query(..., description="The Supabase Auth User ID"),
+    auth: dict = Depends(get_auth_context)
+):
     """
     Triggers face matching for the current user against all indexed photos.
     This is usually called post-registration or post-face-login.
@@ -126,10 +129,10 @@ async def match_mine(user_id: str = Query(..., description="The Supabase Auth Us
         if not embedding:
             return MatchResponse(success=False, error="User embedding not found. Please scan face first.")
 
-        # 2. Search for similar faces
+        # 2. Search for similar faces (Scoped to Org)
         # Threshold can be overridden by env var
         threshold = float(os.getenv("MATCH_THRESHOLD", 0.6))
-        matches = search_similar(embedding, threshold=threshold, limit=500)
+        matches = search_similar(embedding, threshold=threshold, limit=500, org_id=auth.get("org_id"))
         
         if not matches:
             return MatchResponse(success=True, count=0)
@@ -403,7 +406,12 @@ async def search_faces(
         from database_supabase import search_similar
         
         # We pass min_similarity directly as threshold
-        matches = search_similar(query_embedding, threshold=min_similarity, limit=limit)
+        matches = search_similar(
+            query_embedding, 
+            threshold=min_similarity, 
+            limit=limit,
+            org_id=auth.get("org_id")
+        )
         
         # Convert to response model
         search_matches = []

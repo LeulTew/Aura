@@ -20,6 +20,10 @@ use tauri::Manager;
 mod trash_manager;
 mod watcher;
 mod queue;
+mod hash;
+mod sync_worker;
+
+use sync_worker::SyncWorker;
 
 /// Represents a file in the local trash
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -40,6 +44,48 @@ pub struct SyncFolder {
     pub mode: String, // "upload-only", "download-only", "bidirectional"
     pub enabled: bool,
     pub last_sync: Option<String>,
+}
+
+fn main() {
+    env_logger::init();
+    
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            let watcher = FileWatcher::new(app.handle().clone());
+            app.manage(watcher);
+            
+            // Setup DB
+            let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(&app_data).map_err(|e| e.to_string())?;
+            let db_path = app_data.join("sync.db");
+            
+            // Create Queue
+            let queue = SyncQueue::new(db_path).map_err(|e| e.to_string())?;
+            app.manage(queue.clone()); 
+            
+            // Start Background Worker
+            let worker = SyncWorker::new(queue);
+            worker.start();
+            app.manage(worker);
+            
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            init_trash_dir,
+            move_to_trash,
+            list_trash,
+            restore_from_trash,
+            permanent_delete,
+            cleanup_expired_trash,
+            get_sync_status,
+            start_watch,
+            stop_watch,
+            add_sync_item,
+            get_sync_items,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
 
 /// Get the .aura_trash directory path
@@ -281,37 +327,4 @@ fn get_sync_status() -> Result<serde_json::Value, String> {
     }))
 }
 
-fn main() {
-    env_logger::init();
-    
-    tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .setup(|app| {
-            let watcher = FileWatcher::new(app.handle().clone());
-            app.manage(watcher);
-            
-            // Setup DB
-            let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
-            std::fs::create_dir_all(&app_data).map_err(|e| e.to_string())?;
-            let db_path = app_data.join("sync.db");
-            let queue = SyncQueue::new(db_path).map_err(|e| e.to_string())?;
-            app.manage(queue);
-            
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            init_trash_dir,
-            move_to_trash,
-            list_trash,
-            restore_from_trash,
-            permanent_delete,
-            cleanup_expired_trash,
-            get_sync_status,
-            start_watch,
-            stop_watch,
-            add_sync_item,
-            get_sync_items,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
+

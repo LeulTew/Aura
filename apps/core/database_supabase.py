@@ -110,7 +110,8 @@ def store_embedding(
 def search_similar(
     query_embedding: List[float],
     threshold: float = 0.6,
-    limit: int = 100
+    limit: int = 100,
+    org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Search for similar faces using cosine similarity.
@@ -119,6 +120,7 @@ def search_similar(
         query_embedding: 512D face embedding to match
         threshold: Minimum similarity score (0-1). Note: Logic is flipped vs LanceDB distance.
         limit: Maximum results to return
+        org_id: Optional Tenant ID to scope search. REQUIRED for multi-tenant security.
     
     Returns:
         List of matches with keys: id, source_path, distance, photo_date, similarity
@@ -126,14 +128,17 @@ def search_similar(
     try:
         client = get_client()
         
-        result = client.rpc(
-            "match_faces",
-            {
-                "query_embedding": query_embedding,
-                "match_threshold": threshold,
-                "match_count": limit
-            }
-        ).execute()
+        rpc_name = "match_faces_tenant" if org_id else "match_faces"
+        rpc_params = {
+            "query_embedding": query_embedding,
+            "match_threshold": threshold,
+            "match_count": limit
+        }
+        
+        if org_id:
+            rpc_params["p_org_id"] = org_id
+            
+        result = client.rpc(rpc_name, rpc_params).execute()
         
         matches = result.data or []
         

@@ -207,7 +207,12 @@ CREATE POLICY "admin_view_usage" ON public.usage_logs
 -- ============================================
 -- 7. UPDATED match_faces FUNCTION (Org-Scoped)
 -- ============================================
-CREATE OR REPLACE FUNCTION public.match_faces_org (
+-- ============================================
+-- 7. SECURE MATCHING FUNCTION (Backend Only)
+-- ============================================
+
+-- Function for Service Role (Python Backend) to search specific tenant
+CREATE OR REPLACE FUNCTION public.match_faces_tenant (
     query_embedding vector(512),
     p_org_id UUID,
     match_threshold float DEFAULT 0.6,
@@ -222,7 +227,9 @@ RETURNS TABLE (
     similarity DOUBLE PRECISION
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+-- NO SECURITY DEFINER needed if called by service_role (which has bypass RLS)
+-- But we use it to be explicit about privileges if needed.
+-- Actually standard PLPGSQL is fine.
 AS $$
 BEGIN
     RETURN QUERY
@@ -241,6 +248,12 @@ BEGIN
     LIMIT match_count;
 END;
 $$;
+
+-- REVOKE EXECUTE from normal users to prevent spoofing
+REVOKE EXECUTE ON FUNCTION public.match_faces_tenant FROM public;
+REVOKE EXECUTE ON FUNCTION public.match_faces_tenant FROM anon;
+REVOKE EXECUTE ON FUNCTION public.match_faces_tenant FROM authenticated;
+-- Service role has all privileges by default
 
 -- ============================================
 -- 8. SEED SUPERADMIN (Run manually with your user ID)
