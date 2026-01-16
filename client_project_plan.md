@@ -140,7 +140,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 #### 5B: SuperAdmin Portal Enhancements [PARTIAL]
 
-- [x] **Usage Dashboard**: Activity feed implemented, chart visualizations pending
+- [x] **Usage Dashboard**: Activity feed implemented, stats dashboard live
 - [ ] **Billing Management**: Upgrade plans, set custom limits, overage alerts
 - [ ] **Audit Logging**: Track all superadmin actions with timestamps
 - [ ] **Tenant Onboarding**: Email workflow for new tenant invites
@@ -179,7 +179,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 | `local_sync` | Synced from desktop agent | Permanent |
 | `event_temp` | Temporary event photos | 30-day auto-cleanup |
 
-### Phase 6: Hybrid Storage [PLANNED]
+### Phase 6: Hybrid Storage [IN PROGRESS]
 
 **Goal**: Local + Cloud sources optimized for Ethiopian market conditions.
 
@@ -191,16 +191,32 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
 - [x] **Nested Paths**: Uploads use `{org_slug}/{year}/...` structure
 
-#### 6B: Sync Agent (Desktop App) [PARTIAL]
+#### 6B: Sync Agent (Desktop App) [IN PROGRESS]
 
-- [x] **Scaffolding**: React frontend created (apps/sync-agent)
-- [ ] **Desktop App**: Electron/Tauri application for Windows/Mac (Requires Rust)
-- [ ] **Folder Watch**: Monitor registered local directories for changes
-- [ ] **Offline Queue**: IndexedDB-based queue for actions during offline periods
-- [ ] **Delta Sync**: Only sync file changes, not full files
-- [ ] **Bandwidth Throttle**: Configurable upload speed limit (KB/s)
+- [x] **Scaffolding**: React frontend created (`apps/sync-agent`)
+- [x] **Desktop App**: Tauri v2 backend initialized with Rust (`src-tauri`)
+- [x] **Folder Watch**: Implemented using `notify` crate in `watcher.rs`
+- [x] **Local Trash**: Implemented in `trash_manager.rs`
+- [ ] **Offline Queue**: SQLite schema created, sync logic pending
+- [ ] **Delta Sync**: File hashing comparison logic needed
+- [ ] **Bandwidth Throttle**: Rate limiting for upload streams pending
 - [ ] **Local Vector Index**: Face embeddings stored locally for offline search
 - [ ] **Conflict Resolution**: Last-write-wins with manual override option
+
+### Phase 7: Production Readiness & Launch [PLANNED]
+
+**Goal**: Load testing, security audit, and final deployment.
+
+- [ ] **Load Testing**:
+  - Simulate 50 concurrent uploads
+  - Test 100k photo gallery scroll performance
+- [ ] **Security Audit**:
+  - Verify RLS policies on all 12 tables
+  - Test tenant isolation (can Org A see Org B's files?)
+  - Penetration test API endpoints
+- [ ] **Documentation**:
+  - `admin-guide.md`: How to use the portal
+  - `sync-agent-manual.md`: Installation and troubleshooting
 
 ---
 
