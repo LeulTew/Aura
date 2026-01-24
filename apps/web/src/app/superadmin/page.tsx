@@ -178,6 +178,39 @@ export default function SuperAdminPage() {
         }
     };
 
+    const handleSwitchTenant = async (orgId: string) => {
+        if (!confirm("Confirm context switch? You will be logged in as an Admin for this tenant.")) return;
+        setLoading(true); // UI block
+        try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const res = await fetch(`${backendUrl}/api/superadmin/switch-tenant`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ target_org_id: orgId })
+            });
+            
+            // Check for non-200 status
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.detail || "Switch failed");
+            }
+            
+            const data = await res.json();
+            
+            // Swap Token
+            sessionStorage.setItem("admin_token", data.token);
+            // Redirect
+            window.location.href = data.redirect || '/admin';
+            
+        } catch (err: any) {
+             setError("Context switch failed: " + err.message);
+             setLoading(false);
+        }
+    };
+
     const formatBytes = (bytes: number) => {
         if (bytes === 0) return '0 GB';
         return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
@@ -548,6 +581,7 @@ export default function SuperAdminPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-4">
+                                        <button onClick={() => handleSwitchTenant(org.id)} className={`text-xs font-bold text-[#1a1c1e] hover:text-[#c5a059] transition-colors ${jetbrains.className}`}>MANAGE</button>
                                         <button onClick={() => { setSelectedOrg(org); setEditPlan(org.plan); setEditLimit(org.storage_limit_gb); setShowEditModal(true); }} className={`text-xs underline decoration-[#1a1c1e]/30 hover:decoration-[#1a1c1e] text-[#1a1c1e] ${jetbrains.className}`}>EDIT</button>
                                         <button onClick={() => toggleStatus(org)} className={`text-xs text-[#8e9196] hover:text-[#1a1c1e] ${jetbrains.className}`}>{org.is_active ? 'SUSPEND' : 'ACTIVATE'}</button>
                                     </div>

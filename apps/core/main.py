@@ -618,6 +618,60 @@ async def unified_login(req: LoginRequest):
         logger.error(f"Login error: {e}")
         return LoginResponse(success=False, error="Authentication failed")
 
+class SwitchTenantRequest(BaseModel):
+    target_org_id: str
+
+@app.post("/api/superadmin/switch-tenant")
+async def switch_tenant(
+    req: SwitchTenantRequest,
+    auth: dict = Depends(get_auth_context)
+):
+    """
+    SuperAdmin only: Switch context to a specific tenant.
+    Returns a new short-lived JWT scoped to the target organization with 'admin' role.
+    """
+    from database_supabase import get_client
+    import jwt
+    from datetime import datetime, timedelta, timezone
+
+    # 1. Verify SuperAdmin
+    if auth.get("role") != "superadmin":
+        raise HTTPException(status_code=403, detail="Only SuperAdmins can switch context")
+    
+    try:
+        client = get_client()
+        
+        # 2. Verify Target Org Exists (and get slug/name)
+        org_res = client.table("organizations").select("*").eq("id", req.target_org_id).single().execute()
+        
+        if not org_res.data:
+            raise HTTPException(status_code=404, detail="Target organization not found")
+        
+        org = org_res.data
+        
+        # 3. Mint new Token (Admin Role, Target Org Context)
+        # We perform a "sudo" login effectively
+        new_token = jwt.encode({
+            "sub": auth.get("user_id"), # Keep original user ID for audit
+            "email": "superadmin-sudo", # Marker
+            "role": "admin",            # Downgrade to Admin for safety/compat
+            "org_id": org["id"],
+            "org_slug": org["slug"],
+            "org_name": org["name"],
+            "display_name": "SuperAdmin (Sudo)",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1) # Short expiry
+        }, JWT_SECRET, algorithm="HS256")
+        
+        return {
+            "success": True,
+            "token": new_token,
+            "redirect": "/admin"
+        }
+        
+    except Exception as e:
+        logger.error(f"Switch token error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to switch context")
+
 
 @app.post("/api/admin/login", response_model=LoginResponse)
 async def legacy_admin_login(req: LoginRequest):

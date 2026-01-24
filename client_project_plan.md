@@ -127,13 +127,14 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Notifications Tab**: Email preference toggles (`billing_alerts`, `usage_warnings`).
 - [ ] **Profile Edit**: Allow users to change their own Avatar/DisplayName.
 
-### Phase 6: Commercialization (Billing) [PLANNED]
+### Phase 6: Multi-Tenant Business Control [NEW PRIORITY]
 
-**Goal**: Turn manual tenant provisioning into a self-serve SaaS.
+**Goal**: Empower the Business Owner to manage multiple studio locations (Tenants) from a central command center.
 
-- [ ] **Stripe Integration**: Connect `organizations.plan` to Stripe Subscriptions.
-- [ ] **Billing Portal**: `/admin/settings/billing` for invoice history and card updates.
-- [ ] **Usage Enforcement**: Hard block uploads when `storage_used_bytes > storage_limit_gb`.
+- [ ] **Context Switching**: "Manage" button in SuperAdmin dashboard to instantly log in as the Admin of any specific studio tenant.
+  - _Mechanism_: `POST /api/superadmin/switch-tenant` mints a scoped `admin` token for the target organization.
+- [ ] **Unified Dashboard**: View aggregated health and storage stats across all studios.
+- [ ] **Global Team View**: (Optional) See all employees across all studios.
 
 ### Phase 7: Advanced Sync (Desktop Agent) [BETA]
 
@@ -143,6 +144,11 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Bi-Directional**: Cloud Deletes -> Local Trash (Missing).
 - [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios.
 - [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search.
+
+### Phase 8: Future Roadmap (Post-Launch)
+
+- [ ] **Commercialization (Billing)**: Self-serve SaaS with Stripe, invoicing, and hard storage limits.
+- [ ] **Mobile App**: Dedicated photographer app for easier event uploads.
 
 ---
 
