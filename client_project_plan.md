@@ -39,7 +39,6 @@ Designed for Ethiopian market conditions where internet connectivity can be unre
 1. **Event Photography (Mobile)**: Photographers at events upload directly to "Event Temp Storage" using mobile data. Photos are marked as temporary and can be reviewed/archived later at the studio.
 
 2. **Studio Workflow (Local Primary)**: Studios register local folders (e.g., `D:\Photos\2026`) as sources. The Sync Agent monitors these folders and performs:
-
    - **Offline Queue**: Actions queued in IndexedDB when offline
    - **Delta Sync**: Only changed files synced, reducing bandwidth
    - **Bandwidth Limit**: Configurable upload speed to avoid saturating connection
@@ -237,17 +236,17 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ## 🔧 Tech Stack Summary
 
-| Layer          | Technology                     | Notes                           |
-| -------------- | ------------------------------ | ------------------------------- |
-| **Frontend**   | Next.js 15, React 18           | App Router, Server Components   |
-| **Styling**    | Vanilla CSS                    | Editorial design system         |
-| **Backend**    | FastAPI (Python 3.11)          | Async, auto-docs with OpenAPI   |
-| **ML**         | InsightFace                    | 512-dim embeddings, ~50ms/face  |
-| **Database**   | Supabase PostgreSQL + pgvector | RLS, realtime, edge functions   |
-| **Storage**    | Supabase Storage               | S3-compatible, CDN, signed URLs |
-| **Auth**       | Supabase Auth + Custom JWT     | Role-based, org-scoped          |
-| **Desktop**    | Electron/Tauri                 | Phase 6 - Sync Agent            |
-| **Deployment** | Vercel + Cloud Run             | Frontend + Backend              |
+| Layer          | Technology                                     | Notes                           |
+| -------------- | ---------------------------------------------- | ------------------------------- |
+| **Frontend**   | Next.js 15, React 18                           | App Router, Server Components   |
+| **Styling**    | Vanilla CSS                                    | Editorial design system         |
+| **Backend**    | FastAPI (Python 3.11)                          | Async, auto-docs with OpenAPI   |
+| **ML**         | InsightFace                                    | 512-dim embeddings, ~50ms/face  |
+| **Database**   | Supabase PostgreSQL + pgvector                 | RLS, realtime, edge functions   |
+| **Storage**    | Supabase Storage                               | S3-compatible, CDN, signed URLs |
+| **Auth**       | Supabase Auth + Custom JWT                     | Role-based, org-scoped          |
+| **Desktop**    | Electron/Tauri                                 | Phase 6 - Sync Agent            |
+| **Deployment** | Vercel (Frontend) + Google Cloud Run (Backend) | AI runs largely on Cloud Run    |
 
 ---
 

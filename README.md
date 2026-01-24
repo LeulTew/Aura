@@ -26,13 +26,13 @@
 
 We migrated from **DeepFace** to **InsightFace** to enable free-tier hosting without sacrificing accuracy.
 
-| Feature       | 🐢 DeepFace (Legacy)      | 🚀 InsightFace (Current)           |
-| :------------ | :------------------------ | :--------------------------------- |
-| **Model**     | GhostFaceNet (TensorFlow) | Buffalo_L (ArcFace/ONNX)           |
-| **RAM Usage** | ~1.5 GB (Heavy)           | **< 300 MB (Efficient)**           |
-| **Speed**     | 2-3s initialization       | **< 0.5s initialization**          |
-| **Accuracy**  | High (State-of-the-art)   | **High (Industry Standard)**       |
-| **Platform**  | Requires VPS / Paid GPU   | **Runs on Free Tier (Render/One)** |
+| Feature       | 🐢 DeepFace (Legacy)      | 🚀 InsightFace (Current)                          |
+| :------------ | :------------------------ | :------------------------------------------------ |
+| **Model**     | GhostFaceNet (TensorFlow) | Buffalo_L (ArcFace/ONNX)                          |
+| **RAM Usage** | ~1.5 GB (Heavy)           | **< 300 MB (Efficient)**                          |
+| **Speed**     | 2-3s initialization       | **< 0.5s initialization**                         |
+| **Accuracy**  | High (State-of-the-art)   | **High (Industry Standard)**                      |
+| **Platform**  | Requires VPS / Paid GPU   | **Runs on Free Tier (Render / Google Cloud Run)** |
 
 > **Why we chose Buffalo_L/ONNX:**
 > While DeepFace offers excellent research-grade models, its TensorFlow backend is too heavy for standard free-tier containers (512MB RAM limit). Buffalo_L provides near-identical accuracy for real-world face retrieval but runs on a fraction of the resources, making Aura cost-effective to host.
