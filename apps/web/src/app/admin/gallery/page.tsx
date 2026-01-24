@@ -13,13 +13,7 @@ interface Photo {
     metadata?: any;
 }
 
-function parseJwt(token: string): any {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-    } catch { return null; }
-}
+import { parseJwt } from '@/utils/auth';
 
 export default function GalleryPage() {
     const [photos, setPhotos] = useState<Photo[]>([]);

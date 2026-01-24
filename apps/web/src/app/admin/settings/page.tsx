@@ -5,13 +5,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Settings, Save, Loader2, Building2, Users, HardDrive, Bell, Shield } from 'lucide-react';
 
-function parseJwt(token: string): any {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-    } catch { return null; }
-}
+import { parseJwt } from '@/utils/auth';
 
 interface OrgSettings {
     name: string;
@@ -36,7 +30,7 @@ export default function SettingsPage() {
         if (token) {
             const claims = parseJwt(token);
             if (claims) {
-                setOrgId(claims.org_id);
+                setOrgId(claims.org_id || null);
                 setDisplayName(claims.display_name || '');
                 setUserId(claims.sub);
             }

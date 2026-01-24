@@ -798,8 +798,6 @@ async def face_login(file: UploadFile = File(...)):
     """
     Login by face. Returns JWT if face matches an authorized user.
     """
-    # ... implementation ...
-    pass  # Placeholder as we are injecting before this
 
 class InviteRequest(BaseModel):
     email: str

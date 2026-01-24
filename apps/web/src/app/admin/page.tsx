@@ -1,11 +1,12 @@
 /* eslint-disable */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, InputHTMLAttributes } from "react";
 import VoidBackground from "@/components/VoidBackground";
 import { supabase } from "@/lib/supabase";
 import { Loader2, Upload, Trash2, RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon, ArrowLeft } from "lucide-react";
 import Link from 'next/link';
+import { parseJwt } from '@/utils/auth';
 
 interface PhotoRecord {
   id: string;
@@ -14,21 +15,15 @@ interface PhotoRecord {
   metadata?: any;
 }
 
-// Helper to decode JWT and extract claims
-function parseJwt(token: string): any {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
+interface FileWithPath extends File {
+    webkitRelativePath: string;
+}
+
+declare module 'react' {
+    interface InputHTMLAttributes<T> extends React.HTMLAttributes<T> {
+        webkitdirectory?: string;
+        directory?: string;
+    }
 }
 
 export default function AdminPage() {
@@ -405,14 +400,15 @@ export default function AdminPage() {
                         if (e.target.files) {
                             const files = Array.from(e.target.files).map(f => ({
                                 file: f,
-                                relativePath: (f as any).webkitRelativePath || f.name
+                                relativePath: (f as FileWithPath).webkitRelativePath || f.name
                             }));
                             processFiles(files);
                         }
                     }}
                     accept="image/*"
                     multiple
-                    {...({ webkitdirectory: "", directory: "" } as any)}
+                    webkitdirectory=""
+                    directory=""
                 />
                 
                 {isUploading ? (

@@ -9,6 +9,8 @@ import {
     X, Edit3, Move, Eye, MoreHorizontal, Database
 } from 'lucide-react';
 
+import { parseJwt } from '@/utils/auth';
+
 interface FileItem {
     name: string;
     type: 'folder' | 'file';
@@ -17,13 +19,6 @@ interface FileItem {
     lastModified?: string;
 }
 
-function parseJwt(token: string): any {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-    } catch { return null; }
-}
 
 export default function FilesPage() {
     const [currentPath, setCurrentPath] = useState<string>('');

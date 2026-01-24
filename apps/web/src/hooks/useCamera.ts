@@ -13,6 +13,15 @@ interface CameraState {
   logs: string[];
 }
 
+// Basic interface for Tethr camera to avoid any
+interface TethrCamera {
+    open(): Promise<void>;
+    close(): Promise<void>;
+    getModel(): Promise<string>;
+    getBatteryLevel(): Promise<number | string>;
+    takePhoto(options: { download: boolean }): Promise<{ status: string, value: any[] }>;
+}
+
 export function useCamera() {
   const [state, setState] = useState<CameraState>({
     status: 'disconnected',
@@ -22,7 +31,7 @@ export function useCamera() {
     logs: [],
   });
   
-  const cameraRef = useRef<any | null>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const cameraRef = useRef<TethrCamera | null>(null);
 
   const appendLog = (msg: string) => {
     setState(s => ({ ...s, logs: [...s.logs.slice(-4), msg] }));
@@ -97,14 +106,16 @@ export function useCamera() {
     
     try {
       const manager = new TethrManager();
+      // Library requires specific enum, 'default' is fallback
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cam = await manager.requestCamera('default' as any);
+      const cam = await manager.requestCamera('default' as any) as unknown as TethrCamera;
       
       if (!cam) {
         throw new Error('No camera selected.');
       }
       
       await cam.open();
+      // Safe cast to our interface
       cameraRef.current = cam;
       
       const name = await cam.getModel();
