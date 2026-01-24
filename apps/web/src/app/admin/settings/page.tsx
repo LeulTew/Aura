@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Settings, Save, Loader2, Building2, Users, HardDrive, Bell, Shield } from 'lucide-react';
+import { Settings, Save, Loader2, Building2, Users, HardDrive, Bell, Shield, User, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { parseJwt } from '@/utils/auth';
 
@@ -21,9 +21,14 @@ export default function SettingsPage() {
     const [orgId, setOrgId] = useState<string | null>(null);
     const [settings, setSettings] = useState<OrgSettings | null>(null);
     const [displayName, setDisplayName] = useState('');
+    const [editDisplayName, setEditDisplayName] = useState('');
     const [activeTab, setActiveTab] = useState('organization');
     const [userId, setUserId] = useState<string | null>(null);
     const [preferences, setPreferences] = useState({ email_alerts: true, weekly_report: true });
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [logoutLoading, setLogoutLoading] = useState(false);
+    const [success, setSuccess] = useState('');
+    const [error, setError] = useState('');
     
     useEffect(() => {
         const token = sessionStorage.getItem('admin_token');
@@ -32,6 +37,7 @@ export default function SettingsPage() {
             if (claims) {
                 setOrgId(claims.org_id || null);
                 setDisplayName(claims.display_name || '');
+                setEditDisplayName(claims.display_name || '');
                 setUserId(claims.sub);
             }
         }
@@ -109,7 +115,70 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveProfile = async () => {
+        if (!editDisplayName.trim()) return;
+        setProfileSaving(true);
+        setError('');
+        setSuccess('');
+        try {
+            const token = sessionStorage.getItem('admin_token');
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const res = await fetch(`${backendUrl}/api/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ display_name: editDisplayName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setDisplayName(editDisplayName);
+                setSuccess('Profile updated successfully');
+            } else {
+                throw new Error(data.detail || 'Update failed');
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to update profile');
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
+    const handleLogoutSessions = async () => {
+        if (!confirm('This will log you out of all devices. Continue?')) return;
+        setLogoutLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            const token = sessionStorage.getItem('admin_token');
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const res = await fetch(`${backendUrl}/api/logout-sessions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSuccess(data.message);
+                // Log user out locally after a delay
+                setTimeout(() => {
+                    sessionStorage.removeItem('admin_token');
+                    window.location.href = '/login';
+                }, 2000);
+            } else {
+                throw new Error(data.detail || 'Logout failed');
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to logout sessions');
+        } finally {
+            setLogoutLoading(false);
+        }
+    };
+
     const tabs = [
+        { id: 'profile', label: 'Profile', icon: User },
         { id: 'organization', label: 'Organization', icon: Building2 },
         { id: 'storage', label: 'Storage', icon: HardDrive },
         { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -153,6 +222,58 @@ export default function SettingsPage() {
 
                 {/* Content */}
                 <div className="flex-1 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 rounded-2xl p-8 shadow-sm">
+                    {/* Alerts */}
+                    {error && (
+                        <div className="mb-6 p-4 border border-red-500/20 bg-red-500/5 flex items-center gap-4 text-red-500 rounded-xl">
+                            <AlertCircle className="w-5 h-5 shrink-0" />
+                            <span className="font-mono text-xs">{error}</span>
+                        </div>
+                    )}
+                    {success && (
+                        <div className="mb-6 p-4 border border-green-500/20 bg-green-500/5 flex items-center gap-4 text-green-500 rounded-xl">
+                            <CheckCircle2 className="w-5 h-5 shrink-0" />
+                            <span className="font-mono text-xs">{success}</span>
+                        </div>
+                    )}
+
+                    {activeTab === 'profile' && (
+                        <div className="space-y-8">
+                            <div>
+                                <label className="block text-xs font-mono text-gray-500 dark:text-white/40 uppercase tracking-wider mb-3">
+                                    Display Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editDisplayName}
+                                    onChange={(e) => setEditDisplayName(e.target.value)}
+                                    className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-4 text-sm font-medium focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-white/20"
+                                    placeholder="Your display name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-mono text-gray-500 dark:text-white/40 uppercase tracking-wider mb-3">
+                                    User ID
+                                </label>
+                                <input
+                                    type="text"
+                                    value={userId || ''}
+                                    disabled
+                                    className="w-full bg-gray-100 dark:bg-black/20 border border-gray-200 dark:border-white/5 rounded-xl px-4 py-4 text-sm text-gray-400 dark:text-white/30 cursor-not-allowed font-mono"
+                                />
+                            </div>
+                            <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+                                <button
+                                    onClick={handleSaveProfile}
+                                    disabled={profileSaving || editDisplayName === displayName}
+                                    className="px-8 py-4 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 text-xs disabled:opacity-50"
+                                >
+                                    {profileSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    Save Profile
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'organization' && settings && (
                         <div className="space-y-8">
                             <div>
@@ -268,9 +389,18 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-white/5">
-                                <button className="text-xs font-mono uppercase tracking-wider text-red-500 hover:text-red-600 hover:underline">
-                                    Log out invalid sessions (Coming Soon)
+                            <div className="pt-6 border-t border-gray-100 dark:border-white/5">
+                                <h3 className="font-bold text-sm mb-3 uppercase tracking-wider">Session Management</h3>
+                                <p className="text-xs text-gray-500 dark:text-white/40 font-mono mb-4">
+                                    Signing out will invalidate all active sessions across all devices.
+                                </p>
+                                <button 
+                                    onClick={handleLogoutSessions}
+                                    disabled={logoutLoading}
+                                    className="px-6 py-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {logoutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                                    Log Out All Sessions
                                 </button>
                             </div>
                         </div>
