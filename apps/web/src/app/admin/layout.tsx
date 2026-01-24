@@ -135,7 +135,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     });
 
     return (
-        <div className={`min-h-screen transition-colors duration-300 ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-[#050505] text-white'}`}>
+        <div 
+            className={`min-h-screen transition-colors duration-300 ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-[#050505] text-white'}`}
+            style={{ '--accent': '#7C3AED' } as React.CSSProperties}
+        >
             {/* Sidebar Desktop */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-72 border-r transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#0a0a0a] border-white/5'}`}>
                 {/* Logo Area */}
