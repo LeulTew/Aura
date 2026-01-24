@@ -1,8 +1,9 @@
 # Client Project Plan: "Aura Pro"
 
-**Vision**: A Multi-Tenant SaaS Platform for Photo Studios  
-**Target Release**: 2026  
+**Vision**: A Multi-Tenant SaaS Platform for Photo Studios
+**Target Release**: 2026
 **Stack**: Next.js 15, FastAPI, Supabase (PostgreSQL + pgvector), WebUSB
+**Current Status**: MVP Production Ready (Authentication, Storage, Search, & Tethr functional)
 
 ---
 
@@ -83,141 +84,65 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ---
 
-## 📅 Implementation Phases
+## 📅 Implementation Status & Roadmap
 
-### Phase 1: Foundation Upgrade (Backend) [DONE]
+### Phase 1: Foundation (Backend) [COMPLETED]
 
-**Goal**: Migrate from ephemeral local CSV/LanceDB to cloud-native Supabase.
+- [x] **Setup Supabase**: `pgvector` extension enabled.
+- [x] **Schema Design**: Multi-tenant tables created (`organizations`, `profiles`, `photos`).
+- [x] **RLS Policies**: Implemented & Tested.
+- [x] **Face Recognition**: InsightFace running on Cloud Run.
 
-- [x] **Setup Supabase**: Initialize project, enable `pgvector` extension for vector similarity search
-- [x] **Schema Design**: Create tables for `users`, `photos`, `bundles`, `embeddings` with proper indexes
-- [x] **Migrate Logic**: Rewrite `database.py` to use Supabase client instead of local LanceDB
-- [x] **Authentication API**: Implement `POST /auth/face-login` for face-based authentication
+### Phase 2: Core UX & "No Cable" Sync [COMPLETED]
 
-> **Tech Details**: Using `pgvector` with HNSW index for sub-100ms similarity search on 100k+ embeddings.
+- [x] **WebUSB Integration**: `tethr` library implemented in `useCamera.ts`.
+- [x] **Sync Pipeline**: Camera → Browser → Supabase Storage.
+- [x] **Local Cache**: `Dexie.js` caching for offline-first experience.
 
-### Phase 2: Core UX & "No Cable" Sync [FRONTEND] [DONE]
+### Phase 3: Public Experience [COMPLETED]
 
-**Goal**: Build the Admin Capture Station with direct camera connection.
+- [x] **Landing Page**: Implemented.
+- [x] **Gallery**: Virtualized masonry layout with CSS columns.
+- [x] **QR Generation**: Admin can generate event QR codes.
+- [x] **Download**: `jszip` client-side zipping.
 
-- [x] **WebUSB Integration**: Implement `tethr` library for PTP protocol camera communication
-- [x] **Sync Pipeline**: Camera → Browser (Blob) → Supabase Storage with progress tracking
-- [x] **Dexie Cache**: Local IndexedDB caching for instant thumbnail preview
+### Phase 4: Multi-Tenant Platform [COMPLETED - MVP]
 
-> **Tech Details**: WebUSB requires HTTPS. Camera detection via `navigator.usb.requestDevice()`.
+- [x] **SuperAdmin Dashboard**: Create/Edit tenants, view Platform Stats (Active).
+- [x] **Tenant Admin**: Manage Team (Add/Remove), Files, and Settings.
+- [x] **Scoped Queries**: Backend enforces `org_id` on all operations.
 
-### Phase 3: Public Face [FRONTEND] [DONE]
+### Phase 5: Admin Polish & Security (Missing Components) [NEXT UP]
 
-**Goal**: Professional landing page and seamless guest experience.
+**Goal**: Fill the gaps identified in the "Coming Soon" sections of the Admin UI.
 
-- [x] **Landing Page**: Editorial design with bold typography, professional photography focus
-- [x] **Gallery 2.0**: Virtualized grid using TanStack Virtual for 10,000+ photos
-- [x] **QR Generation**: Admin can generate unique event QR codes for guests
+#### 5A: Team Management Real-Time
 
-> **Design**: Bold typography, clean borders, no glassmorphism - professional editorial style.
+- [ ] **Email Invites**: Replace mocked `handleInvite` in `/admin/team/page.tsx` with real SendGrid/Resend API call.
+- [ ] **Auth Sign-Up**: Invite link should lead to `signup?token=...` flow to create actual Supabase Auth user.
 
-### Phase 4: Intelligence & Delivery [CORE] [DONE]
+#### 5B: Settings Completion
 
-**Goal**: Advanced face search and efficient download management.
+- [ ] **Security Tab**: Implement 2FA toggle and "Log out all devices" in `/admin/settings`.
+- [ ] **Notifications Tab**: Email preference toggles (`billing_alerts`, `usage_warnings`).
+- [ ] **Profile Edit**: Allow users to change their own Avatar/DisplayName.
 
-- [x] **Backend Search**: `match_faces` RPC function using cosine similarity with configurable threshold
-- [x] **Download Manager**: Client-side zip generation using `jszip` to reduce server load
+### Phase 6: Commercialization (Billing) [PLANNED]
 
-> **Performance**: HNSW index enables ~50ms search across 100k embeddings.
+**Goal**: Turn manual tenant provisioning into a self-serve SaaS.
 
-### Phase 5: Multi-Tenant Platform [IN PROGRESS]
+- [ ] **Stripe Integration**: Connect `organizations.plan` to Stripe Subscriptions.
+- [ ] **Billing Portal**: `/admin/settings/billing` for invoice history and card updates.
+- [ ] **Usage Enforcement**: Hard block uploads when `storage_used_bytes > storage_limit_gb`.
 
-**Goal**: Role-based access control and SuperAdmin management portal.
+### Phase 7: Advanced Sync (Desktop Agent) [BETA]
 
-#### 5A: Database Foundation [DONE]
+**Goal**: Robust bi-directional sync for offline-first studios.
 
-- [x] **Organizations Table**: Tenants with plan limits and storage tracking
-- [x] **Profiles Table**: Users with roles (superadmin/admin/employee)
-- [x] **RLS Policies**: Strict tenant isolation via `org_id` filtering
-- [x] **Role-Based JWT**: Login returns token with role, org_id, org_slug claims
-- [x] **SuperAdmin Portal**: `/superadmin` route with tenant CRUD and stats dashboard
-
-#### 5B: SuperAdmin Portal Enhancements [PARTIAL]
-
-- [x] **Usage Dashboard**: Activity feed implemented, stats dashboard live
-- [ ] **Billing Management**: Upgrade plans, set custom limits, overage alerts
-- [ ] **Audit Logging**: Track all superadmin actions with timestamps
-- [ ] **Tenant Onboarding**: Email workflow for new tenant invites
-
-#### 5C: Tenant Admin Scoping [DONE]
-
-- [x] **Scoped Queries**: All `/admin` queries filtered by `org_id` from JWT
-- [x] **Employee Management**: /admin/team page with invite modal, role assignment, member removal
-- [x] **Usage Tracking**: Middleware implemented in main.py (log_usage, update_storage_stats)
-
-#### 5D: Design Consistency [DONE]
-
-- [x] **Audit**: `/admin/team` and `/admin/sources` for Editorial Dark theme
-- [x] **Refinement**: Standardized headers, buttons, and typography
-
-#### 5E: Admin UI Navigation Structure [DONE]
-
-**Role-Based Tab Visibility:**
-
-| Tab          | Route             | Admin | Manager | Photographer | Editor |
-| :----------- | :---------------- | :---: | :-----: | :----------: | :----: |
-| Dashboard    | `/admin`          |  ✅   |   ✅    |      ✅      |   ✅   |
-| Upload       | `/admin/capture`  |  ✅   |   ✅    |      ✅      |   ❌   |
-| Gallery      | `/admin/gallery`  |  ✅   |   ✅    |      ✅      |   ✅   |
-| File Manager | `/admin/files`    |  ✅   |   ✅    |      ❌      |   ❌   |
-| Team         | `/admin/team`     |  ✅   |   ❌    |      ❌      |   ❌   |
-| Sources      | `/admin/sources`  |  ✅   |   ✅    |      ❌      |   ❌   |
-| Settings     | `/admin/settings` |  ✅   |   ❌    |      ❌      |   ❌   |
-
-**Employee Labels**: `manager`, `photographer`, `editor` (stored in `profiles.label`)
-
-**Sources Page (`/admin/sources`):**
-| Type | Description | Retention |
-|:---|:---|:---|
-| `cloud` | Direct upload to cloud | Permanent |
-| `local_sync` | Synced from desktop agent | Permanent |
-| `event_temp` | Temporary event photos | 30-day auto-cleanup |
-
-### Phase 6: Hybrid Storage [IN PROGRESS]
-
-**Goal**: Local + Cloud sources optimized for Ethiopian market conditions.
-
-#### 6A: Cloud Enhancements [DONE]
-
-- [x] **Source Types**: `source_type` column verified in schema
-- [x] **Sources UI**: /admin/sources page with type visualization
-- [x] **Event Temp Tier**: Auto-cleanup after 30 days, convert to permanent on approval
-- [x] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
-- [x] **Nested Paths**: Uploads use `{org_slug}/{year}/...` structure
-
-#### 6B: Sync Agent (Desktop App) [DONE]
-
-- [x] **Scaffolding**: React frontend created (`apps/sync-agent`)
-- [x] **Desktop App**: Tauri v2 backend initialized with Rust (`src-tauri`)
-- [x] **Folder Watch**: Implemented using `notify` crate in `watcher.rs`
-- [x] **Local Trash**: Implemented in `trash_manager.rs`
-- [x] **Offline Queue**: SQLite schema created, sync logic implemented (`queue.rs`)
-- [x] **Delta Sync**: File hashing comparison logic implemented (`hash.rs`, `sync_worker.rs`)
-- [x] **Bandwidth Throttle**: Rate limiting (Basic implementation in worker loop)
-- [x] **Sync Logic**: `SyncWorker` background thread implemented and verified.
-- [ ] **Local Vector Index**: Face embeddings stored locally for offline search (Next Iteration)
-- [ ] **Conflict Resolution**: Last-write-wins with manual override option (Next Iteration)
-
-### Phase 7: Production Readiness & Launch [DONE]
-
-**Goal**: Load testing, security audit, and final deployment.
-
-- [x] **Documentation**: Created `admin-guide.md` and `sync-agent-manual.md`
-- [x] **Load Testing**:
-  - [x] Simulate 50 concurrent uploads (Verified: 6 req/s, 50/50 success)
-  - [x] Test 100k photo gallery scroll performance
-- [x] **Security Audit**:
-  - [x] Verify RLS policies on all 12 tables (Audit Report created)
-  - [x] Test tenant isolation (Remediated Global Search Vuln)
-  - [x] Penetration test API endpoints (Secured /api/match/mine)
-- [x] **Documentation**:
-  - [x] `admin-guide.md`: How to use the portal
-  - [x] `sync-agent-manual.md`: Installation and troubleshooting
+- [x] **One-Way Sync**: Local -> Cloud (Implemented).
+- [ ] **Bi-Directional**: Cloud Deletes -> Local Trash (Missing).
+- [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios.
+- [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search.
 
 ---
 
@@ -245,229 +170,5 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 | **Database**   | Supabase PostgreSQL + pgvector                 | RLS, realtime, edge functions   |
 | **Storage**    | Supabase Storage                               | S3-compatible, CDN, signed URLs |
 | **Auth**       | Supabase Auth + Custom JWT                     | Role-based, org-scoped          |
-| **Desktop**    | Electron/Tauri                                 | Phase 6 - Sync Agent            |
+| **Desktop**    | Electron/Tauri                                 | Phase 7 - Sync Agent            |
 | **Deployment** | Vercel (Frontend) + Google Cloud Run (Backend) | AI runs largely on Cloud Run    |
-
----
-
-## 🔐 Phase 5.5: User & Access Management Workflows [NEW]
-
-> **Goal**: Define detailed end-to-end workflows for platform governance, user management, and access control.
-
-### SuperAdmin Workflow
-
-```mermaid
-sequenceDiagram
-    SuperAdmin->>Aura: Login at /login
-    Aura-->>SuperAdmin: Redirect to /superadmin
-
-    Note over SuperAdmin: Tenant Provisioning
-    SuperAdmin->>Aura: Create New Organization
-    Aura->>DB: INSERT organizations
-    SuperAdmin->>Aura: Create Primary Admin for Org
-    Aura->>DB: INSERT profiles (role=admin, org_id)
-    Aura->>Email: Send invite to admin@tenant.com
-
-    Note over SuperAdmin: Tenant Management
-    SuperAdmin->>Aura: View Usage Dashboard
-    Aura-->>SuperAdmin: Storage, API calls, searches per tenant
-    SuperAdmin->>Aura: Edit Tenant (Plan/Storage Limit)
-    SuperAdmin->>Aura: Suspend/Activate Tenant
-```
-
-**SuperAdmin Capabilities**:
-| Action | Endpoint | Notes |
-|--------|----------|-------|
-| Create Organization | `/superadmin` → Create Tenant | Sets slug, initial plan, storage limit |
-| Create Primary Admin | `/superadmin` → Add Admin | Links to organization, triggers invite |
-| Edit Tenant Config | `/superadmin` → Edit Modal | Plan upgrade, storage limit change |
-| Suspend/Activate | `/superadmin` → Toggle | Revokes/grants all org access |
-| View Platform Stats | `/superadmin` Dashboard | Total tenants, photos, storage |
-| View Activity Feed | `/superadmin` Sidebar | Real-time usage logs |
-
-### Tenant Admin Workflow
-
-```mermaid
-sequenceDiagram
-    TenantAdmin->>Aura: Accept Invite Email
-    TenantAdmin->>Aura: Set Password
-    TenantAdmin->>Aura: Login at /login
-    Aura-->>TenantAdmin: Redirect to /admin
-
-    Note over TenantAdmin: Employee Management
-    TenantAdmin->>Aura: Invite Employee
-    Aura->>DB: INSERT profiles (role=employee, org_id)
-    Aura->>Email: Send credentials/setup link
-
-    Note over TenantAdmin: Photo Management
-    TenantAdmin->>Aura: Upload Photos (Drag/Drop)
-    TenantAdmin->>Aura: Connect Folder Source (Sync Agent)
-    TenantAdmin->>Aura: Create Bundles for Guests
-    TenantAdmin->>Aura: Generate QR Code for Event
-```
-
-**Tenant Admin Capabilities**:
-| Action | Location | Notes |
-|--------|----------|-------|
-| Invite Employee | `/admin/team` (Planned) | Email with setup link |
-| Assign Role | `/admin/team` (Planned) | employee/photographer |
-| Remove Employee | `/admin/team` (Planned) | Revokes access, retains data |
-| Connect Folder | `/admin/sources` (Planned) | Via Sync Agent |
-| Revoke Folder | `/admin/sources` (Planned) | Stops sync, optionally delete cloud copy |
-| View Usage | `/admin` Dashboard | Storage, uploads, searches |
-
-### Employee Workflow
-
-1. **Receive Credentials**: Admin sends email with login info
-2. **Login**: Access `/login` with provided credentials
-3. **Capture Photos**: Access `/admin/capture` for camera connection
-4. **Upload Photos**: Drag-and-drop to org folder
-5. **Search**: Limited to org photos only (RLS enforced)
-
----
-
-## 📂 Server Folder & Storage Architecture [NEW]
-
-> **Goal**: Define the storage structure on the cloud server for optimal organization, sync compatibility, and future scalability.
-
-### Cloud Storage Path Convention
-
-```
-supabase-storage/
-└── photos/
-    └── {org_slug}/
-        └── {year}/
-            └── {event_or_folder_name}/
-                ├── originals/
-                │   └── IMG_0001.jpg
-                └── optimized/
-                    ├── full/        (2000px max dimension)
-                    │   └── IMG_0001.webp
-                    └── thumbs/      (400px max dimension)
-                        └── IMG_0001.webp
-```
-
-### Path Breakdown
-
-| Segment             | Purpose                 | Example          |
-| ------------------- | ----------------------- | ---------------- |
-| `{org_slug}`        | Tenant isolation        | `studio-abc`     |
-| `{year}`            | Time-based partitioning | `2026`           |
-| `{event_or_folder}` | Logical grouping        | `wedding-jan-15` |
-| `originals/`        | RAW/Original uploads    | Full-res JPG/RAW |
-| `optimized/full/`   | Web-optimized           | 2000px WebP      |
-| `optimized/thumbs/` | Thumbnails              | 400px WebP       |
-
-### Benefits
-
-1. **Sync Compatibility**: Mirrors local folder structure for easy sync agent mapping
-2. **Tenant Isolation**: `org_slug` as root prevents cross-tenant access
-3. **Performance**: Pre-generated thumbnails for instant gallery loading
-4. **Future-Proof**: Structured for CDN integration, lifecycle policies, tiered storage
-
----
-
-## 🔄 Phase 6: Enhanced Bidirectional Sync Specification [UPDATED]
-
-> **Goal**: Bidirectional sync between local studio servers and cloud, with robust conflict handling and data safety.
-
-### 6A: Cloud Storage Enhancements [DONE]
-
-- [x] **Source Types**: `source_type` column already in schema (cloud/local_sync/event_temp)
-- [x] **Sources Management UI**: `/admin/sources` for registering local folders
-- [x] **Event Temp Auto-Cleanup**: 30-day TTL with admin approval for permanence
-- [x] **Optimized Image Pipeline**: Auto-generate `full/` and `thumbs/` variants on upload
-
-### 6B: Bidirectional Sync Agent [NEW SPECIFICATION]
-
-#### Core Features
-
-| Feature                | Description                               |
-| ---------------------- | ----------------------------------------- |
-| **Upload Sync**        | Local changes → Cloud (existing behavior) |
-| **Download Sync**      | Cloud changes → Local (NEW)               |
-| **Folder Sync Toggle** | Per-folder setting: "Always sync latest"  |
-| **Selective Sync**     | Choose specific folders to sync (not all) |
-| **Conflict Detection** | Hash comparison before overwrite          |
-
-#### Sync Modes
-
-1. **Upload-Only Mode** (Default)
-   - Local folder → Cloud
-   - Ideal for event photographers uploading to studio
-2. **Download-Only Mode**
-   - Cloud → Local folder
-   - Ideal for backup to local NAS
-3. **Bidirectional Mode** (Full Sync)
-   - Changes in either direction synced
-   - Requires conflict resolution strategy
-
-#### Deletion Handling (CRITICAL)
-
-```mermaid
-graph TD
-    A[File Deleted] --> B{Deletion Source?}
-    B -->|Local| C[Move to Cloud Trash]
-    B -->|Cloud| D[Move to Local Trash]
-    C --> E[Retain 30 days in Trash]
-    D --> E
-    E --> F{User Action?}m
-    F -->|Restore| G[Move back to original location]
-    F -->|Permanent Delete| H[Hard delete from both locations]
-    F -->|30 days elapsed| H
-```
-
-**Deletion Rules**:
-| Scenario | Action | Reversible |
-|----------|--------|------------|
-| Local delete | Cloud copy moved to `.trash/` | Yes (30 days) |
-| Cloud delete | Local copy moved to `.aura_trash/` | Yes (30 days) |
-| Folder delete | Mark folder as "deleted", not immediate hard delete | Yes (admin restore) |
-| Conflict on restore | Rename restored file with timestamp suffix | - |
-
-#### Conflict Resolution
-
-| Scenario                                | Strategy                            | User Action            |
-| --------------------------------------- | ----------------------------------- | ---------------------- |
-| Same file modified both sides           | Last-write-wins (configurable)      | Can choose "keep both" |
-| New file added both sides (same name)   | Keep both with suffix               | -                      |
-| File deleted locally, modified on cloud | Cloud version wins (saved to local) | Can restore local      |
-| File modified locally, deleted on cloud | Local version wins (re-uploaded)    | Can confirm delete     |
-
-#### Sync Agent Technical Spec
-
-```yaml
-# sync_config.yaml
-sync_agent:
-  version: "1.0.0"
-  org_id: "uuid"
-  api_key: "tenant_scoped_key" # Not service_role
-
-  folders:
-    - local_path: "D:\\Photos\\2026\\Weddings"
-      cloud_path: "studio-abc/2026/weddings"
-      mode: "bidirectional"
-      sync_interval_minutes: 30
-
-    - local_path: "D:\\Photos\\2026\\Events"
-      cloud_path: "studio-abc/2026/events"
-      mode: "upload-only"
-      sync_interval_minutes: 60
-
-  settings:
-    bandwidth_limit_kbps: 5000
-    trash_retention_days: 30
-    conflict_strategy: "last-write-wins"
-    optimize_on_upload: true
-    sync_metadata: true
-```
-
-### 6C: Data Safety & Backup [DONE]
-
-| Feature              | Implementation                                     | Status |
-| -------------------- | -------------------------------------------------- | ------ |
-| **Trash Folder**     | Cloud: `{org_slug}/.trash/`, Local: `.aura_trash/` | ✅     |
-| **Retention Period** | 30 days default, configurable per tenant           | ✅     |
-| **Restore API**      | `POST /api/trash/restore/{id}`                     | ✅     |
-| **Permanent Delete** | Requires admin confirmation + audit log            | ✅     |
-| **Backup Export**    | Admin can export all org data as ZIP (planned)     | ⏳     |

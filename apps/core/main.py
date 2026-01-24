@@ -798,6 +798,87 @@ async def face_login(file: UploadFile = File(...)):
     """
     Login by face. Returns JWT if face matches an authorized user.
     """
+    # ... implementation ...
+    pass  # Placeholder as we are injecting before this
+
+class InviteRequest(BaseModel):
+    email: str
+    role: str = "employee"
+
+@app.post("/api/invite")
+async def invite_user(
+    req: InviteRequest,
+    auth: dict = Depends(get_auth_context)
+):
+    """
+    Invite a new user to the organization via email.
+    Uses Supabase Auth Admin API to send an invite link.
+    """
+    from database_supabase import get_client, log_usage
+    
+    # 1. Check Permissions
+    requestor_role = auth.get("role")
+    org_id = auth.get("org_id")
+    
+    if requestor_role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Only admins can invite users")
+        
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization context required")
+        
+    client = get_client()
+    
+    try:
+        # 2. Send Supabase Invite
+        # This requires the SERVER key (service_role) initialized in get_client()
+        invite_res = client.auth.admin.invite_user_by_email(
+            req.email,
+            options={
+                "data": {
+                    "org_id": org_id,
+                    "role": req.role,
+                    "invited_by": auth.get("user_id")
+                }
+                # "redirectTo": "https://aura-pro.com/setup-password" # Optional
+            }
+        )
+        
+        if not invite_res.user:
+             raise HTTPException(status_code=500, detail="Failed to create auth user")
+             
+        new_user_id = invite_res.user.id
+        
+        # 3. Ensure Profile Exists & Has Correct Role/Org
+        # Even if a trigger exists, we force update to be safe
+        profile_data = {
+            "id": new_user_id,
+            "email": req.email,
+            "role": req.role,
+            "org_id": org_id,
+            "display_name": req.email.split("@")[0]
+        }
+        
+        # Upsert profile
+        client.table("profiles").upsert(profile_data).execute()
+        
+        # 4. Log Usage
+        log_usage(
+            org_id=org_id,
+            user_id=auth.get("user_id"),
+            action="invite_user",
+            metadata={"invited_email": req.email, "role": req.role}
+        )
+        
+        return {"success": True, "message": f"Invitation sent to {req.email}", "user_id": new_user_id}
+        
+    except Exception as e:
+        logger.error(f"Invite error: {e}")
+        # Build friendly error message
+        msg = str(e)
+        if "unique" in msg.lower():
+            msg = "User already exists"
+        raise HTTPException(status_code=400, detail=msg)
+
     # Verify file is image
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type")

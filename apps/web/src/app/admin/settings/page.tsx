@@ -28,7 +28,9 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState<OrgSettings | null>(null);
     const [displayName, setDisplayName] = useState('');
     const [activeTab, setActiveTab] = useState('organization');
-
+    const [userId, setUserId] = useState<string | null>(null);
+    const [preferences, setPreferences] = useState({ email_alerts: true, weekly_report: true });
+    
     useEffect(() => {
         const token = sessionStorage.getItem('admin_token');
         if (token) {
@@ -36,13 +38,15 @@ export default function SettingsPage() {
             if (claims) {
                 setOrgId(claims.org_id);
                 setDisplayName(claims.display_name || '');
+                setUserId(claims.sub);
             }
         }
     }, []);
 
     useEffect(() => {
         if (orgId) fetchSettings();
-    }, [orgId]);
+        if (userId) fetchPreferences();
+    }, [orgId, userId]);
 
     const fetchSettings = async () => {
         setLoading(true);
@@ -59,6 +63,37 @@ export default function SettingsPage() {
             console.error('Failed to load settings:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchPreferences = async () => {
+        if (!userId) return;
+        try {
+            const { data } = await supabase
+                .from('profiles')
+                .select('preferences')
+                .eq('id', userId)
+                .single();
+            
+            if (data?.preferences) {
+                setPreferences({ ...preferences, ...data.preferences });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSavePreferences = async (newPrefs: typeof preferences) => {
+        if (!userId) return;
+        setPreferences(newPrefs); // Optimistic update
+        try {
+            await supabase
+                .from('profiles')
+                .update({ preferences: newPrefs })
+                .eq('id', userId);
+        } catch (err) {
+            console.error("Failed to save prefs", err);
+            // Revert would go here
         }
     };
 
@@ -192,14 +227,56 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'notifications' && (
-                        <div className="text-white/40 text-sm">
-                            Notification settings coming soon.
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                                <div>
+                                    <h3 className="font-medium text-sm text-white">Email Alerts</h3>
+                                    <p className="text-xs text-white/40 mt-1">Receive immediate emails for critical errors</p>
+                                </div>
+                                <button 
+                                    onClick={() => handleSavePreferences({ ...preferences, email_alerts: !preferences.email_alerts })}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${preferences.email_alerts ? 'bg-[#7C3AED]' : 'bg-white/10'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${preferences.email_alerts ? 'left-7' : 'left-1'}`} />
+                                </button>
+                            </div>
+                            
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                                <div>
+                                    <h3 className="font-medium text-sm text-white">Weekly Report</h3>
+                                    <p className="text-xs text-white/40 mt-1">Summary of storage usage and activity</p>
+                                </div>
+                                <button 
+                                    onClick={() => handleSavePreferences({ ...preferences, weekly_report: !preferences.weekly_report })}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${preferences.weekly_report ? 'bg-[#7C3AED]' : 'bg-white/10'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${preferences.weekly_report ? 'left-7' : 'left-1'}`} />
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {activeTab === 'security' && (
-                        <div className="text-white/40 text-sm">
-                            Security settings coming soon. This will include 2FA and session management.
+                        <div className="space-y-6">
+                             <div className="p-4 bg-white/5 rounded-xl border border-white/5 opacity-50">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-medium text-sm text-white flex items-center gap-2">
+                                            Two-Factor Authentication
+                                            <span className="px-2 py-0.5 bg-[#7C3AED]/20 text-[#7C3AED] text-[10px] rounded uppercase font-bold">Pro</span>
+                                        </h3>
+                                        <p className="text-xs text-white/40 mt-1">Secure your account with 2FA</p>
+                                    </div>
+                                    <div className="w-12 h-6 rounded-full bg-white/10 relative cursor-not-allowed">
+                                        <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white/20" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                                <button className="text-xs text-red-400 hover:text-red-300">
+                                    Log out invalid sessions (Coming Soon)
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

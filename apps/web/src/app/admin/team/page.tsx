@@ -105,24 +105,26 @@ export default function TeamPage() {
         setSuccess("");
         
         try {
-            // In a real implementation, this would:
-            // 1. Create a Supabase Auth user
-            // 2. Create a profile with org_id
-            // 3. Send an invite email
+            const token = sessionStorage.getItem("admin_token");
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
             
-            // For now, we'll just insert into profiles (simulating invite)
-            const { data, error } = await supabase
-                .from('profiles')
-                .insert({
+            const res = await fetch(`${backendUrl}/api/invite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
                     email: inviteEmail,
-                    role: inviteRole,
-                    org_id: orgId,
-                    display_name: inviteEmail.split('@')[0]
+                    role: inviteRole
                 })
-                .select()
-                .single();
+            });
             
-            if (error) throw error;
+            const result = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(result.detail || 'Invitation failed');
+            }
             
             setSuccess(`Invited ${inviteEmail} as ${inviteRole}`);
             setShowInviteModal(false);

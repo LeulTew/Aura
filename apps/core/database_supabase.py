@@ -54,6 +54,10 @@ def store_embeddings(records: List[Dict[str, Any]]) -> int:
         logger.info(f"Stored {count} embeddings in Supabase")
         return count
         
+        return count
+        
+    except Exception as e:
+        logger.error(f"Failed to store embeddings: {e}")
         return 0
 
 
