@@ -1,0 +1,44 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/core/**"
+      - ".github/workflows/deploy-backend.yml"
+
+env:
+  PROJECT_ID: aura-484013
+  REGION: us-central1
+  SERVICE_NAME: aura-core
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Authentication via Service Account Key JSON
+      # User must set GCP_CREDENTIALS secret in GitHub Repo
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_CREDENTIALS }}"
+
+      # Deploy to Cloud Run
+      - name: "Deploy to Cloud Run"
+        uses: "google-github-actions/deploy-cloudrun@v2"
+        with:
+          source: "apps/core"
+          service: "${{ env.SERVICE_NAME }}"
+          region: "${{ env.REGION }}"
+          project_id: "${{ env.PROJECT_ID }}"
+          # Allow unauthenticated for now (controlled by API auth)
+          flags: "--allow-unauthenticated"
