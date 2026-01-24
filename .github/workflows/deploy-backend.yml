@@ -29,7 +29,7 @@ jobs:
       - id: "auth"
         uses: "google-github-actions/auth@v2"
         with:
-          workload_identity_provider: "projects/430265422877/locations/global/workloadIdentityPools/github-pool/providers/github-provider-fresh"
+          workload_identity_provider: "projects/430265422877/locations/global/workloadIdentityPools/github-pool/providers/github-provider-secure"
           service_account: "github-deployer@aura-484013.iam.gserviceaccount.com"
 
       # Deploy to Cloud Run
