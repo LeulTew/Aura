@@ -11,7 +11,7 @@ on:
 env:
   PROJECT_ID: aura-484013
   REGION: us-central1
-  SERVICE_NAME: aura-core
+  SERVICE_NAME: aura-backend
 
 jobs:
   deploy:
