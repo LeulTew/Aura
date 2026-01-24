@@ -53,11 +53,6 @@ export default function SourcesPage() {
     const [newSourceType, setNewSourceType] = useState<'cloud' | 'local_sync' | 'event_temp'>('cloud');
     const [adding, setAdding] = useState(false);
 
-    // Design Tokens (Editorial Dark)
-    const accentColor = '#7C3AED';
-    const fontDisplay = "font-sans font-black uppercase leading-[0.85] tracking-[-0.04em]";
-    const fontMono = "font-mono text-xs uppercase tracking-[0.2em] font-medium";
-
     const sourceTypeConfig = {
         cloud: { icon: Cloud, label: 'Cloud Storage', color: '#3B82F6', desc: 'Direct upload to cloud' },
         local_sync: { icon: FolderSync, label: 'Local Sync', color: '#7C3AED', desc: 'Synced from local folder' },
@@ -153,67 +148,55 @@ export default function SourcesPage() {
 
     if (loading) {
         return (
-            <main className="min-h-screen bg-black text-white flex items-center justify-center">
+            <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-[#7C3AED]" />
-            </main>
+            </div>
         );
     }
 
     return (
-        <main className="min-h-screen bg-black text-white antialiased selection:bg-[#7C3AED] selection:text-white">
+        <div className="space-y-6">
             {/* Header */}
-            <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50 py-4">
-                <div className="max-w-[1400px] mx-auto px-8 flex justify-between items-center">
-                    <div className="flex items-center gap-10">
-                        <Link 
-                            href="/admin"
-                            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors group"
-                        >
-                            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                            <span className={fontMono}>Back</span>
-                        </Link>
-                        <div className="w-px h-6 bg-white/10" />
-                        <div className="flex items-center gap-4">
-                            <div className="w-8 h-8 bg-white flex items-center justify-center">
-                                <HardDrive className="w-5 h-5 text-black" />
-                            </div>
-                            <h1 className={`${fontDisplay} text-3xl`}>Storage Sources</h1>
-                        </div>
-                    </div>
-                    
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="bg-white text-black px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#7C3AED] hover:text-white transition-all duration-300"
-                    >
-                        <Plus className="w-4 h-4 inline-block mr-2 -mt-0.5" />
-                        Add Source
-                    </button>
+            <div className="flex items-center justify-between pb-6 border-b border-gray-200 dark:border-white/5">
+                <div>
+                    <h1 className="text-2xl font-black uppercase tracking-tight font-sans">Storage Sources</h1>
+                    <p className="text-gray-500 dark:text-white/40 text-sm mt-1 font-mono uppercase tracking-wider">Configure Ingest Pipelines</p>
                 </div>
-            </header>
+                
+                <button
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-black dark:bg-white text-white dark:text-black px-6 py-3 text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 rounded-xl"
+                >
+                    <Plus className="w-4 h-4" />
+                    Add Source
+                </button>
+            </div>
 
             {/* Alerts */}
-            <div className="max-w-[1400px] mx-auto px-8 mt-12">
+            <div className="space-y-4">
                 {error && (
-                    <div className="mb-6 p-6 border border-red-500/50 bg-red-500/5 flex items-center gap-4 text-red-500">
+                    <div className="p-4 border border-red-500/20 bg-red-500/5 flex items-center gap-4 text-red-500 rounded-xl">
                         <AlertCircle className="w-5 h-5 shrink-0" />
-                        <span className={`${fontMono} tracking-[0.1em]`}>{error}</span>
+                        <span className="font-mono text-xs">{error}</span>
                     </div>
                 )}
                 {success && (
-                    <div className="mb-6 p-6 border border-green-500/50 bg-green-500/5 flex items-center gap-4 text-green-500">
+                    <div className="p-4 border border-green-500/20 bg-green-500/5 flex items-center gap-4 text-green-500 rounded-xl">
                         <CheckCircle2 className="w-5 h-5 shrink-0" />
-                        <span className={`${fontMono} tracking-[0.1em]`}>{success}</span>
+                        <span className="font-mono text-xs">{success}</span>
                     </div>
                 )}
             </div>
 
             {/* Sources Grid */}
-            <div className="max-w-[1400px] mx-auto px-8 py-12">
+            <div>
                 {sources.length === 0 ? (
-                    <div className="border border-white/5 bg-[#050505] p-24 text-center">
-                        <HardDrive className="w-16 h-16 text-white/5 mx-auto mb-6" />
-                        <p className={`${fontMono} text-white/40 mb-2`}>No storage sources configured</p>
-                        <p className="text-white/20 text-sm">Photos will be routed to global cloud storage by default.</p>
+                    <div className="border-2 border-dashed border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#050505] p-24 text-center rounded-2xl">
+                        <div className="w-16 h-16 bg-white dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-100 dark:border-white/5">
+                            <HardDrive className="w-8 h-8 text-gray-300 dark:text-white/10" />
+                        </div>
+                        <p className="font-mono text-gray-400 dark:text-white/40 mb-2 uppercase tracking-tight">No storage sources configured</p>
+                        <p className="text-gray-500 dark:text-white/20 text-sm">Photos will be routed to global cloud storage by default.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -224,44 +207,44 @@ export default function SourcesPage() {
                             return (
                                 <div 
                                     key={source.id}
-                                    className="border border-white/10 bg-[#050505] p-8 hover:border-white/30 transition-all group relative overflow-hidden"
+                                    className="border border-gray-200 dark:border-white/10 bg-white dark:bg-[#050505] p-8 hover:border-[#7C3AED]/30 dark:hover:border-white/30 transition-all group relative overflow-hidden rounded-2xl shadow-sm hover:shadow-lg"
                                 >
                                     {/* Accent Corner */}
                                     <div 
-                                        className="absolute top-0 right-0 w-16 h-16 opacity-10 group-hover:opacity-20 transition-opacity"
-                                        style={{ background: `linear-gradient(45deg, transparent 50%, ${config.color} 50%)` }}
+                                        className="absolute top-0 right-0 w-24 h-24 opacity-5 group-hover:opacity-10 transition-opacity rounded-bl-full"
+                                        style={{ background: config.color }}
                                     />
 
                                     <div className="flex items-start justify-between mb-8">
                                         <div 
-                                            className="w-14 h-14 flex items-center justify-center border transition-all group-hover:scale-105"
-                                            style={{ backgroundColor: `${config.color}10`, borderColor: `${config.color}30` }}
+                                            className="w-14 h-14 flex items-center justify-center border transition-all group-hover:scale-105 rounded-2xl"
+                                            style={{ backgroundColor: `${config.color}10`, borderColor: `${config.color}20` }}
                                         >
                                             <Icon className="w-6 h-6" style={{ color: config.color }} />
                                         </div>
                                         <span 
-                                            className="px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] border"
+                                            className="px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border"
                                             style={{ 
-                                                backgroundColor: source.is_active ? 'white' : 'transparent', 
-                                                color: source.is_active ? 'black' : 'white/40',
-                                                borderColor: source.is_active ? 'white' : 'white/10'
+                                                backgroundColor: source.is_active ? 'rgba(16, 185, 129, 0.1)' : 'transparent', 
+                                                color: source.is_active ? '#10B981' : 'gray',
+                                                borderColor: source.is_active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(128,128,128,0.2)'
                                             }}
                                         >
                                             {source.is_active ? 'Active' : 'Offline'}
                                         </span>
                                     </div>
                                     
-                                    <h3 className="font-bold text-2xl mb-2 tracking-tight">{source.name}</h3>
-                                    <p className={`${fontMono} text-white/40 text-[10px] mb-8 group-hover:text-white/60 transition-colors`}>{config.desc}</p>
+                                    <h3 className="font-bold text-2xl mb-1 tracking-tight text-gray-900 dark:text-white">{source.name}</h3>
+                                    <p className="font-mono text-gray-400 dark:text-white/40 text-[10px] mb-8 uppercase tracking-wide">{config.desc}</p>
                                     
-                                    <div className="space-y-4 border-t border-white/5 pt-6">
+                                    <div className="space-y-4 border-t border-gray-100 dark:border-white/5 pt-6">
                                         <div className="flex justify-between items-center text-sm">
-                                            <span className="text-white/30 uppercase tracking-widest text-[10px] font-bold">Volume</span>
-                                            <span className="font-mono font-bold">{source.photo_count.toLocaleString()} <span className="text-white/20 text-[10px] ml-1 uppercase">Images</span></span>
+                                            <span className="text-gray-400 dark:text-white/30 uppercase tracking-widest text-[10px] font-bold">Volume</span>
+                                            <span className="font-mono font-bold text-gray-700 dark:text-gray-200">{source.photo_count.toLocaleString()} <span className="text-gray-300 dark:text-white/20 text-[10px] ml-1 uppercase">Images</span></span>
                                         </div>
                                         <div className="flex justify-between items-center text-sm">
-                                            <span className="text-white/30 uppercase tracking-widest text-[10px] font-bold">Telemetry</span>
-                                            <span className="font-mono text-xs text-white/60">
+                                            <span className="text-gray-400 dark:text-white/30 uppercase tracking-widest text-[10px] font-bold">Telemetry</span>
+                                            <span className="font-mono text-xs text-gray-500 dark:text-white/60">
                                                 {source.last_sync ? new Date(source.last_sync).toLocaleDateString() : 'NO ACTIVITY'}
                                             </span>
                                         </div>
@@ -288,7 +271,7 @@ export default function SourcesPage() {
                                                         setError('Network error during conversion');
                                                     }
                                                 }}
-                                                className="mt-4 w-full py-3 bg-[#F59E0B] hover:bg-[#D97706] text-black font-bold text-xs uppercase tracking-[0.2em] transition-colors"
+                                                className="mt-4 w-full py-3 bg-[#F59E0B] hover:bg-[#D97706] text-black font-bold text-xs uppercase tracking-[0.2em] transition-colors rounded-xl shadow-lg shadow-orange-500/20"
                                             >
                                                 Convert to Permanent
                                             </button>
@@ -302,17 +285,19 @@ export default function SourcesPage() {
                 )}
                 
                 {/* Info Section */}
-                <div className="mt-20 border border-white/5 bg-[#050505] p-12">
-                    <h3 className={`${fontDisplay} text-3xl mb-8`}>Architecture Definition</h3>
+                <div className="mt-12 border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#050505] p-12 rounded-3xl">
+                    <h3 className="font-sans font-black uppercase tracking-tight text-3xl mb-8 text-gray-900 dark:text-white">Architecture Definition</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {Object.entries(sourceTypeConfig).map(([type, config]) => {
                             const Icon = config.icon;
                             return (
                                 <div key={type} className="flex gap-6">
-                                    <Icon className="w-8 h-8 shrink-0 opacity-40" style={{ color: config.color }} />
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm">
+                                        <Icon className="w-6 h-6" style={{ color: config.color }} />
+                                    </div>
                                     <div>
-                                        <div className="font-bold text-lg mb-2 uppercase tracking-tight">{config.label}</div>
-                                        <p className="text-white/40 text-sm leading-relaxed">{config.desc}. Optimized for high-speed indexing and retrieval.</p>
+                                        <div className="font-bold text-lg mb-2 uppercase tracking-tight text-gray-900 dark:text-white">{config.label}</div>
+                                        <p className="text-gray-500 dark:text-white/40 text-sm leading-relaxed">{config.desc}. Optimized for high-speed indexing and retrieval.</p>
                                     </div>
                                 </div>
                             );
@@ -323,20 +308,18 @@ export default function SourcesPage() {
 
             {/* Add Source Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 p-8 animate-in fade-in duration-300">
-                    <div className="bg-black border border-white/10 max-w-lg w-full p-12 relative overflow-hidden">
-                        {/* Decorative Background Element */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#7C3AED]/5 blur-3xl rounded-full -mr-16 -mt-16" />
+                <div className="fixed inset-0 bg-black/60 dark:bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-8 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 max-w-lg w-full p-12 relative overflow-hidden rounded-3xl shadow-2xl">
                         
                         <div className="relative z-10">
-                            <h2 className={`${fontDisplay} text-4xl mb-2`}>Register Source</h2>
-                            <p className={`${fontMono} text-white/40 mb-12`}>
+                            <h2 className="font-sans font-black text-3xl mb-2 text-gray-900 dark:text-white uppercase tracking-tight">Register Source</h2>
+                            <p className="font-mono text-gray-500 dark:text-white/40 text-xs mb-12 uppercase tracking-wider">
                                 CONFIGURE A NEW STORAGE ENDPOINT FOR SYNC
                             </p>
                             
-                            <form onSubmit={handleAddSource} className="space-y-10">
+                            <form onSubmit={handleAddSource} className="space-y-8">
                                 <div>
-                                    <label className={`${fontMono} text-white/60 block mb-4`}>
+                                    <label className="font-mono text-gray-500 dark:text-white/40 text-xs uppercase tracking-wider block mb-3">
                                         Source Designation
                                     </label>
                                     <input
@@ -344,13 +327,13 @@ export default function SourcesPage() {
                                         value={newSourceName}
                                         onChange={(e) => setNewSourceName(e.target.value)}
                                         placeholder="Studio Cluster Alpha"
-                                        className="w-full h-16 px-6 bg-white/[0.03] border border-white/10 focus:border-[#7C3AED] outline-none transition-all text-white placeholder:text-white/10 font-mono text-sm"
+                                        className="w-full h-14 px-6 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/10 font-mono text-sm rounded-xl"
                                         required
                                     />
                                 </div>
                                 
                                 <div>
-                                    <label className={`${fontMono} text-white/60 block mb-4`}>
+                                    <label className="font-mono text-gray-500 dark:text-white/40 text-xs uppercase tracking-wider block mb-3">
                                         Mount Point (Local Path)
                                     </label>
                                     <input
@@ -358,13 +341,13 @@ export default function SourcesPage() {
                                         value={newSourcePath}
                                         onChange={(e) => setNewSourcePath(e.target.value)}
                                         placeholder="E:\Studio_Archive\2026"
-                                        className="w-full h-16 px-6 bg-white/[0.03] border border-white/10 focus:border-[#7C3AED] outline-none transition-all text-white placeholder:text-white/10 font-mono text-sm"
+                                        className="w-full h-14 px-6 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/10 font-mono text-sm rounded-xl"
                                         required
                                     />
                                 </div>
                                 
                                 <div>
-                                    <label className={`${fontMono} text-white/60 block mb-4`}>
+                                    <label className="font-mono text-gray-500 dark:text-white/40 text-xs uppercase tracking-wider block mb-3">
                                         Storage Protocol
                                     </label>
                                     <div className="grid grid-cols-3 gap-4">
@@ -376,13 +359,13 @@ export default function SourcesPage() {
                                                     key={type}
                                                     type="button"
                                                     onClick={() => setNewSourceType(type as any)}
-                                                    className={`p-4 border transition-all text-center group ${
+                                                    className={`p-4 border rounded-xl transition-all text-center group flex flex-col items-center justify-center gap-2 ${
                                                         isSelected
-                                                            ? 'border-white bg-white text-black'
-                                                            : 'border-white/10 hover:border-white/30 bg-white/5'
+                                                            ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-black shadow-lg ring-2 ring-transparent'
+                                                            : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30 bg-white dark:bg-white/5'
                                                     }`}
                                                 >
-                                                    <Icon className={`w-5 h-5 mx-auto mb-2 ${isSelected ? 'text-black' : 'text-white/40'}`} style={{ color: isSelected ? undefined : config.color }} />
+                                                    <Icon className={`w-5 h-5 ${isSelected ? 'text-white dark:text-black' : 'text-gray-400 dark:text-white/40'}`} style={{ color: isSelected ? undefined : config.color }} />
                                                     <div className="text-[10px] font-black uppercase tracking-tighter leading-none">{type.replace('_', ' ')}</div>
                                                 </button>
                                             );
@@ -390,18 +373,18 @@ export default function SourcesPage() {
                                     </div>
                                 </div>
                                 
-                                <div className="flex gap-4 pt-6">
+                                <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/5">
                                     <button
                                         type="button"
                                         onClick={() => setShowAddModal(false)}
-                                        className="flex-1 h-16 border border-white/10 text-white font-bold uppercase tracking-[0.2em] hover:bg-white/5 transition-all text-xs"
+                                        className="flex-1 h-14 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/60 font-bold uppercase tracking-wider hover:bg-gray-50 dark:hover:bg-white/5 transition-all text-xs rounded-xl"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={adding}
-                                        className="flex-1 h-16 bg-white text-black font-bold uppercase tracking-[0.2em] hover:bg-[#7C3AED] hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-xs"
+                                        className="flex-1 h-14 bg-black dark:bg-white text-white dark:text-black font-bold uppercase tracking-wider hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-xs rounded-xl"
                                     >
                                         {adding ? (
                                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -418,6 +401,6 @@ export default function SourcesPage() {
                     </div>
                 </div>
             )}
-        </main>
+        </div>
     );
 }

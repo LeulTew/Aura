@@ -13,13 +13,19 @@ interface CameraState {
   logs: string[];
 }
 
+// Interface for Tethr SDK photo object
+interface TethrPhoto {
+    blob: Blob;
+    filename: string;
+}
+
 // Basic interface for Tethr camera to avoid any
 interface TethrCamera {
     open(): Promise<void>;
     close(): Promise<void>;
     getModel(): Promise<string>;
     getBatteryLevel(): Promise<number | string>;
-    takePhoto(options: { download: boolean }): Promise<{ status: string, value: any[] }>;
+    takePhoto(options: { download: boolean }): Promise<{ status: string, value: TethrPhoto[] }>;
 }
 
 export function useCamera() {

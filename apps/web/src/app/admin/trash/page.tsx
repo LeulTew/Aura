@@ -7,10 +7,9 @@
 
 import { useState, useEffect } from "react";
 import { 
-    Loader2, Trash2, ArrowLeft, RotateCcw, 
+    Loader2, Trash2, RotateCcw, 
     AlertCircle, CheckCircle2, Clock, Image as ImageIcon
 } from "lucide-react";
-import Link from 'next/link';
 
 interface TrashedPhoto {
     id: string;
@@ -53,10 +52,6 @@ export default function TrashPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-    // Design Tokens (Editorial Dark)
-    const fontDisplay = "font-sans font-black uppercase leading-[0.85] tracking-[-0.04em]";
-    const fontMono = "font-mono text-xs uppercase tracking-[0.2em] font-medium";
 
     useEffect(() => {
         const token = sessionStorage.getItem("admin_token");
@@ -161,64 +156,48 @@ export default function TrashPage() {
 
     if (loading) {
         return (
-            <main className="min-h-screen bg-black text-white flex items-center justify-center">
+            <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-[#7C3AED]" />
-            </main>
+            </div>
         );
     }
 
     return (
-        <main className="min-h-screen bg-black text-white antialiased selection:bg-[#7C3AED] selection:text-white">
+        <div className="space-y-6">
             {/* Header */}
-            <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50 py-4">
-                <div className="max-w-[1400px] mx-auto px-8 flex justify-between items-center">
-                    <div className="flex items-center gap-10">
-                        <Link 
-                            href="/admin"
-                            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors group"
-                        >
-                            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                            <span className={fontMono}>Back</span>
-                        </Link>
-                        <div className="w-px h-6 bg-white/10" />
-                        <div className="flex items-center gap-4">
-                            <div className="w-8 h-8 bg-red-500 flex items-center justify-center">
-                                <Trash2 className="w-5 h-5 text-white" />
-                            </div>
-                            <h1 className={`${fontDisplay} text-3xl`}>Trash</h1>
-                        </div>
-                    </div>
-                    <div>
-                        <span className={`${fontMono} text-white/40`}>
-                            {photos.length} item{photos.length !== 1 ? 's' : ''}
-                        </span>
-                    </div>
+            <div className="flex items-center justify-between pb-6 border-b border-gray-200 dark:border-white/5">
+                <div className="flex items-center gap-4">
+                    <h1 className="text-2xl font-black uppercase tracking-tight font-sans">Trash</h1>
+                    <div className="h-6 w-px bg-gray-200 dark:bg-white/10" />
+                    <span className="font-mono text-sm text-gray-400 dark:text-white/40">
+                        {photos.length} item{photos.length !== 1 ? 's' : ''}
+                    </span>
                 </div>
-            </header>
+            </div>
 
             {/* Alerts */}
-            <div className="max-w-[1400px] mx-auto px-8 mt-8">
+            <div className="space-y-4">
                 {error && (
-                    <div className="mb-6 p-6 border border-red-500/50 bg-red-500/5 flex items-center gap-4 text-red-500">
+                    <div className="p-4 border border-red-500/20 bg-red-500/5 flex items-center gap-4 text-red-500 rounded-xl">
                         <AlertCircle className="w-5 h-5 shrink-0" />
-                        <span className={`${fontMono} tracking-[0.1em]`}>{error}</span>
+                        <span className="font-mono text-xs">{error}</span>
                     </div>
                 )}
                 {success && (
-                    <div className="mb-6 p-6 border border-green-500/50 bg-green-500/5 flex items-center gap-4 text-green-500">
+                    <div className="p-4 border border-green-500/20 bg-green-500/5 flex items-center gap-4 text-green-500 rounded-xl">
                         <CheckCircle2 className="w-5 h-5 shrink-0" />
-                        <span className={`${fontMono} tracking-[0.1em]`}>{success}</span>
+                        <span className="font-mono text-xs">{success}</span>
                     </div>
                 )}
             </div>
 
             {/* Trash Grid */}
-            <div className="max-w-[1400px] mx-auto px-8 py-12">
+            <div>
                 {photos.length === 0 ? (
-                    <div className="border border-white/5 bg-[#050505] p-24 text-center">
-                        <Trash2 className="w-16 h-16 text-white/5 mx-auto mb-6" />
-                        <p className={`${fontMono} text-white/40 mb-2`}>Trash is empty</p>
-                        <p className="text-white/20 text-sm">Deleted photos will appear here for 30 days before permanent removal.</p>
+                    <div className="border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#050505] p-24 text-center rounded-2xl">
+                        <Trash2 className="w-16 h-16 text-gray-300 dark:text-white/5 mx-auto mb-6" />
+                        <p className="font-mono text-gray-400 dark:text-white/40 mb-2 uppercase tracking-wide">Trash is empty</p>
+                        <p className="text-gray-500 dark:text-white/20 text-sm">Deleted photos will appear here for 30 days before permanent removal.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -229,25 +208,25 @@ export default function TrashPage() {
                             return (
                                 <div 
                                     key={photo.id}
-                                    className="border border-white/10 bg-[#050505] p-6 hover:border-white/20 transition-colors"
+                                    className="border border-gray-200 dark:border-white/10 bg-white dark:bg-[#050505] p-6 hover:border-gray-300 dark:hover:border-white/20 transition-all rounded-xl shadow-sm"
                                 >
                                     <div className="flex items-start gap-4 mb-4">
-                                        <div className="w-12 h-12 bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                                            <ImageIcon className="w-5 h-5 text-white/20" />
+                                        <div className="w-12 h-12 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center shrink-0 rounded-lg">
+                                            <ImageIcon className="w-5 h-5 text-gray-400 dark:text-white/20" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-sm truncate mb-1">
+                                            <h3 className="font-bold text-sm truncate mb-1 text-gray-900 dark:text-white">
                                                 {photo.full_path.split('/').pop() || 'Unknown'}
                                             </h3>
-                                            <p className="text-[10px] text-white/40 font-mono truncate">
+                                            <p className="text-[10px] text-gray-400 dark:text-white/40 font-mono truncate">
                                                 {photo.metadata?.original_path || photo.full_path}
                                             </p>
                                         </div>
                                     </div>
                                     
                                     <div className="flex items-center gap-2 mb-4 text-xs">
-                                        <Clock className="w-3 h-3 text-white/30" />
-                                        <span className={`${daysRemaining <= 7 ? 'text-red-400' : 'text-white/40'} font-mono`}>
+                                        <Clock className="w-3 h-3 text-gray-400 dark:text-white/30" />
+                                        <span className={`${daysRemaining <= 7 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-white/40'} font-mono`}>
                                             {daysRemaining} days remaining
                                         </span>
                                     </div>
@@ -256,7 +235,7 @@ export default function TrashPage() {
                                         <button
                                             onClick={() => handleRestore(photo.id)}
                                             disabled={isLoading}
-                                            className="flex-1 py-2 bg-[#7C3AED] hover:bg-[#6B2FD6] text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                                            className="flex-1 py-2 bg-[#7C3AED] hover:bg-[#6B2FD6] text-white text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 rounded-lg"
                                         >
                                             {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
                                             Restore
@@ -264,7 +243,7 @@ export default function TrashPage() {
                                         <button
                                             onClick={() => handlePermanentDelete(photo.id)}
                                             disabled={isLoading}
-                                            className="py-2 px-4 border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs uppercase tracking-widest font-bold transition-colors disabled:opacity-50"
+                                            className="py-2 px-4 border border-red-500/30 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 text-xs uppercase tracking-widest font-bold transition-colors disabled:opacity-50 rounded-lg"
                                         >
                                             <Trash2 className="w-3 h-3" />
                                         </button>
@@ -275,6 +254,6 @@ export default function TrashPage() {
                     </div>
                 )}
             </div>
-        </main>
+        </div>
     );
 }

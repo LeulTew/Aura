@@ -6,8 +6,11 @@ export interface JWTPayload {
     org_slug?: string;
     org_name?: string;
     display_name?: string;
+    label?: string;
     exp?: number;
-    [key: string]: any; // Allow other claims but prefer typed ones
+    iat?: number;
+    // Additional JWT claims with proper typing
+    [key: string]: string | number | boolean | undefined;
 }
 
 export function parseJwt(token: string): JWTPayload | null {

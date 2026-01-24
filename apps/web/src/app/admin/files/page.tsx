@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { 
     Folder, UploadCloud, FolderPlus, Trash2, 
     ChevronRight, Home, Loader2, Image as ImageIcon,
-    X, Edit3, Move, Eye, MoreHorizontal, Database
+    X, Edit3, Move, Eye, MoreHorizontal, Database, CheckCircle2
 } from 'lucide-react';
 
 import { parseJwt } from '@/utils/auth';
@@ -450,9 +450,12 @@ export default function FilesPage() {
                     <Loader2 className="w-8 h-8 text-[#7C3AED] animate-spin" />
                 </div>
             ) : items.length === 0 ? (
-                <div className="text-center py-20 border border-white/5 rounded-2xl bg-white/[0.01]">
-                    <Folder className="w-12 h-12 text-white/10 mx-auto mb-4" />
-                    <p className="text-white/30 text-sm">This folder is empty</p>
+                <div className="text-center py-20 border-2 border-dashed border-gray-200 dark:border-white/5 rounded-2xl bg-gray-50 dark:bg-white/[0.01]">
+                    <div className="w-16 h-16 bg-white dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100 dark:border-white/5">
+                        <Folder className="w-8 h-8 text-gray-300 dark:text-white/10" />
+                    </div>
+                    <h3 className="text-gray-900 dark:text-white font-bold uppercase tracking-wide text-sm mb-1">Empty Folder</h3>
+                    <p className="text-gray-500 dark:text-white/30 text-xs font-mono">Upload content to get started</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -461,44 +464,51 @@ export default function FilesPage() {
                             key={item.path}
                             onClick={() => handleItemClick(item)}
                             onContextMenu={(e) => handleContextMenu(e, item)}
-                            className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${
+                            className={`group relative p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${
                                 selectedItems.has(item.path)
-                                    ? 'bg-[#7C3AED]/10 border-[#7C3AED]/30'
-                                    : 'bg-white/[0.02] border-white/5 hover:border-white/20'
+                                    ? 'bg-[#7C3AED]/5 border-[#7C3AED] shadow-sm ring-1 ring-[#7C3AED]'
+                                    : 'bg-white dark:bg-white/[0.02] border-gray-100 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-none'
                             }`}
                         >
                             <div className="flex flex-col items-center text-center">
                                 {item.type === 'folder' ? (
-                                    <Folder className="w-12 h-12 text-[#7C3AED]/70 mb-2" />
+                                    <div className="w-full aspect-[4/3] flex items-center justify-center mb-3">
+                                        <Folder className="w-16 h-16 text-[#7C3AED] drop-shadow-lg" />
+                                    </div>
                                 ) : thumbnails[item.path] ? (
-                                    <div className="w-full aspect-square rounded-lg overflow-hidden mb-2 relative group">
-                                        <img src={thumbnails[item.path]} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="w-full aspect-square rounded-xl overflow-hidden mb-3 relative group bg-gray-100 dark:bg-black/40 border border-gray-100 dark:border-white/5">
+                                        <img src={thumbnails[item.path]} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                                             <Eye className="w-6 h-6 text-white" />
                                         </div>
                                     </div>
                                 ) : (
-                                    <ImageIcon className="w-12 h-12 text-white/30 mb-2" />
+                                    <div className="w-full aspect-square rounded-xl overflow-hidden mb-3 flex items-center justify-center bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                        <ImageIcon className="w-10 h-10 text-gray-300 dark:text-white/20" />
+                                    </div>
                                 )}
-                                <p className="text-xs font-medium truncate w-full">{item.name}</p>
+                                <p className={`text-xs font-bold truncate w-full px-2 ${selectedItems.has(item.path) ? 'text-[#7C3AED]' : 'text-gray-700 dark:text-gray-300'}`}>{item.name}</p>
+                                <p className="text-[10px] text-gray-400 dark:text-white/20 font-mono mt-1">{item.size ? (item.size / 1024 / 1024).toFixed(1) + ' MB' : 'FOLDER'}</p>
                             </div>
                             
                             {/* More button */}
                             <button 
                                 onClick={(e) => handleContextMenu(e, item)}
-                                className="absolute top-2 right-2 p-1 rounded bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-3 right-3 p-1.5 rounded-lg bg-white dark:bg-black/60 shadow-sm border border-gray-100 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 dark:text-white/60 hover:text-black dark:hover:text-white"
                             >
-                                <MoreHorizontal className="w-4 h-4 text-white/60" />
+                                <MoreHorizontal className="w-3.5 h-3.5" />
                             </button>
                             
                             {/* Checkbox */}
                             <div 
                                 onClick={(e) => { e.stopPropagation(); toggleSelect(item.path); }}
-                                className={`absolute top-2 left-2 w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                                    selectedItems.has(item.path) ? 'bg-[#7C3AED] border-[#7C3AED]' : 'border-white/20 opacity-0 group-hover:opacity-100'
+                                className={`absolute top-3 left-3 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                                    selectedItems.has(item.path) 
+                                        ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-sm' 
+                                        : 'bg-white dark:bg-black/40 border-gray-200 dark:border-white/20 opacity-0 group-hover:opacity-100'
                                 }`}
                             >
-                                {selectedItems.has(item.path) && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>}
+                                {selectedItems.has(item.path) && <CheckCircle2 className="w-3 h-3" />}
                             </div>
                         </div>
                     ))}
@@ -508,23 +518,23 @@ export default function FilesPage() {
             {/* Context Menu */}
             {contextMenu && (
                 <div 
-                    className="fixed z-50 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl py-1 min-w-[160px]"
+                    className="fixed z-50 bg-white dark:bg-[#0a0a0a] border border-gray-100 dark:border-white/10 rounded-xl shadow-xl py-1 min-w-[180px]"
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {contextMenu.item.type === 'file' && thumbnails[contextMenu.item.path] && (
-                        <button onClick={() => { setPreviewItem(contextMenu.item); setContextMenu(null); }} className="w-full px-4 py-2 text-left text-sm hover:bg-white/5 flex items-center gap-3">
+                        <button onClick={() => { setPreviewItem(contextMenu.item); setContextMenu(null); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-3 text-gray-700 dark:text-gray-300">
                             <Eye className="w-4 h-4" /> Preview
                         </button>
                     )}
-                    <button onClick={() => { setRenameItem(contextMenu.item); setNewName(contextMenu.item.name); setContextMenu(null); }} className="w-full px-4 py-2 text-left text-sm hover:bg-white/5 flex items-center gap-3">
+                    <button onClick={() => { setRenameItem(contextMenu.item); setNewName(contextMenu.item.name); setContextMenu(null); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-3 text-gray-700 dark:text-gray-300">
                         <Edit3 className="w-4 h-4" /> Rename
                     </button>
-                    <button onClick={() => { setMoveItem(contextMenu.item); setContextMenu(null); }} className="w-full px-4 py-2 text-left text-sm hover:bg-white/5 flex items-center gap-3">
+                    <button onClick={() => { setMoveItem(contextMenu.item); setContextMenu(null); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-3 text-gray-700 dark:text-gray-300">
                         <Move className="w-4 h-4" /> Move
                     </button>
-                    <div className="border-t border-white/5 my-1" />
-                    <button onClick={() => { toggleSelect(contextMenu.item.path); setContextMenu(null); }} className="w-full px-4 py-2 text-left text-sm hover:bg-white/5 text-red-400 flex items-center gap-3">
+                    <div className="border-t border-gray-100 dark:border-white/5 my-1" />
+                    <button onClick={() => { toggleSelect(contextMenu.item.path); setContextMenu(null); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 text-red-500 hover:text-red-600 flex items-center gap-3">
                         <Trash2 className="w-4 h-4" /> Delete
                     </button>
                 </div>
@@ -532,22 +542,29 @@ export default function FilesPage() {
 
             {/* Image Preview Modal */}
             {previewItem && thumbnails[previewItem.path] && (
-                <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={() => setPreviewItem(null)}>
-                    <button className="absolute top-4 right-4 p-2 text-white/40 hover:text-white"><X className="w-6 h-6" /></button>
-                    <img src={thumbnails[previewItem.path]} alt={previewItem.name} className="max-w-full max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
-                    <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm font-mono">{previewItem.name}</p>
+                <div className="fixed inset-0 z-50 bg-white/95 dark:bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setPreviewItem(null)}>
+                    <button className="absolute top-4 right-4 p-2 text-gray-400 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors"><X className="w-6 h-6" /></button>
+                    <img src={thumbnails[previewItem.path]} alt={previewItem.name} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                    <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-500 dark:text-white/60 text-sm font-mono">{previewItem.name}</p>
                 </div>
             )}
 
             {/* New Folder Modal */}
             {showNewFolderModal && (
-                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 w-full max-w-md">
-                        <h2 className="text-xl font-bold uppercase tracking-wider mb-6">New Folder</h2>
-                        <input type="text" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Folder name" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:border-[#7C3AED]/50 outline-none" autoFocus />
+                <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+                        <h2 className="text-xl font-black uppercase tracking-tight mb-6 text-gray-900 dark:text-white">New Folder</h2>
+                        <input 
+                            type="text" 
+                            value={newFolderName} 
+                            onChange={(e) => setNewFolderName(e.target.value)} 
+                            placeholder="Folder name" 
+                            className="w-full bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-4 focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 transition-all font-medium" 
+                            autoFocus 
+                        />
                         <div className="flex gap-4 mt-6">
-                            <button onClick={() => setShowNewFolderModal(false)} className="flex-1 py-3 border border-white/10 rounded-xl text-white/40">Cancel</button>
-                            <button onClick={handleCreateFolder} disabled={creating} className="flex-1 py-3 bg-[#7C3AED] rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={() => setShowNewFolderModal(false)} className="flex-1 py-3 border border-gray-200 dark:border-white/10 rounded-xl text-gray-500 dark:text-white/40 hover:bg-gray-50 dark:hover:bg-white/5 font-bold uppercase tracking-wider text-xs transition-all">Cancel</button>
+                            <button onClick={handleCreateFolder} disabled={creating} className="flex-1 py-3 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider text-xs disabled:opacity-50 flex items-center justify-center gap-2 hover:opacity-90 transition-all">
                                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderPlus className="w-4 h-4" />} Create
                             </button>
                         </div>
@@ -557,13 +574,19 @@ export default function FilesPage() {
 
             {/* Rename Modal */}
             {renameItem && (
-                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 w-full max-w-md">
-                        <h2 className="text-xl font-bold uppercase tracking-wider mb-6">Rename</h2>
-                        <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:border-[#7C3AED]/50 outline-none" autoFocus />
+                <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+                        <h2 className="text-xl font-black uppercase tracking-tight mb-6 text-gray-900 dark:text-white">Rename</h2>
+                        <input 
+                            type="text" 
+                            value={newName} 
+                            onChange={(e) => setNewName(e.target.value)} 
+                            className="w-full bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-4 focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 transition-all font-medium" 
+                            autoFocus 
+                        />
                         <div className="flex gap-4 mt-6">
-                            <button onClick={() => setRenameItem(null)} className="flex-1 py-3 border border-white/10 rounded-xl text-white/40">Cancel</button>
-                            <button onClick={handleRename} disabled={renaming} className="flex-1 py-3 bg-[#7C3AED] rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={() => setRenameItem(null)} className="flex-1 py-3 border border-gray-200 dark:border-white/10 rounded-xl text-gray-500 dark:text-white/40 hover:bg-gray-50 dark:hover:bg-white/5 font-bold uppercase tracking-wider text-xs transition-all">Cancel</button>
+                            <button onClick={handleRename} disabled={renaming} className="flex-1 py-3 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider text-xs disabled:opacity-50 flex items-center justify-center gap-2 hover:opacity-90 transition-all">
                                 {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit3 className="w-4 h-4" />} Rename
                             </button>
                         </div>
@@ -573,15 +596,22 @@ export default function FilesPage() {
 
             {/* Move Modal */}
             {moveItem && (
-                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 w-full max-w-md">
-                        <h2 className="text-xl font-bold uppercase tracking-wider mb-2">Move</h2>
-                        <p className="text-white/40 text-sm mb-6">Moving: {moveItem.name}</p>
-                        <label className="text-xs font-mono text-white/40 uppercase mb-2 block">Destination path (relative to root)</label>
-                        <input type="text" value={movePath} onChange={(e) => setMovePath(e.target.value)} placeholder="e.g. 2026/events" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:border-[#7C3AED]/50 outline-none" autoFocus />
+                <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+                        <h2 className="text-xl font-black uppercase tracking-tight mb-2 text-gray-900 dark:text-white">Move</h2>
+                        <p className="text-gray-500 dark:text-white/40 text-xs mb-6 font-mono">Moving: {moveItem.name}</p>
+                        <label className="text-xs font-mono text-gray-400 dark:text-white/40 uppercase tracking-wider mb-2 block">Destination path (relative to root)</label>
+                        <input 
+                            type="text" 
+                            value={movePath} 
+                            onChange={(e) => setMovePath(e.target.value)} 
+                            placeholder="e.g. 2026/events" 
+                            className="w-full bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-4 focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 transition-all font-medium" 
+                            autoFocus 
+                        />
                         <div className="flex gap-4 mt-6">
-                            <button onClick={() => setMoveItem(null)} className="flex-1 py-3 border border-white/10 rounded-xl text-white/40">Cancel</button>
-                            <button onClick={handleMove} disabled={moving} className="flex-1 py-3 bg-[#7C3AED] rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={() => setMoveItem(null)} className="flex-1 py-3 border border-gray-200 dark:border-white/10 rounded-xl text-gray-500 dark:text-white/40 hover:bg-gray-50 dark:hover:bg-white/5 font-bold uppercase tracking-wider text-xs transition-all">Cancel</button>
+                            <button onClick={handleMove} disabled={moving} className="flex-1 py-3 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider text-xs disabled:opacity-50 flex items-center justify-center gap-2 hover:opacity-90 transition-all">
                                 {moving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Move className="w-4 h-4" />} Move
                             </button>
                         </div>

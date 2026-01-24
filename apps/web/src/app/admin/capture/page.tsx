@@ -29,7 +29,7 @@ export default function CapturePage() {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden font-sans bg-[#050505]">
+    <div className="min-h-screen relative overflow-x-hidden font-sans bg-black text-white">
       <VoidBackground />
       
       {/* 2026 Header Style */}

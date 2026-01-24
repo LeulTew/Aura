@@ -344,52 +344,46 @@ export default function AdminPage() {
   }, [photos]);
 
   if (!token) {
-    // Already redirected to /login in useEffect, show loading state
     return (
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="flex items-center justify-center p-20">
         <Loader2 className="w-8 h-8 text-[#7C3AED] animate-spin" />
-      </main>
+      </div>
     );
   }
 
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white font-sans relative">
-      <div className="fixed inset-0 z-0 opacity-20 pointer-events-none">
+    <div className="space-y-12 relative">
+      <div className="fixed inset-0 z-0 opacity-20 pointer-events-none dark:block hidden">
           <VoidBackground />
       </div>
 
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 px-8 py-6 bg-black/50 backdrop-blur-md border-b border-white/5 flex items-center justify-between">
-         <div className="flex items-center gap-4">
-            <Link href="/" className="w-10 h-10 bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-lg flex items-center justify-center hover:bg-[var(--accent)]/20 transition-colors">
-                <ArrowLeft className="w-5 h-5 text-[var(--accent)]" />
-            </Link>
-            <div>
-                <h1 className="text-sm font-bold uppercase tracking-widest text-white">Upload Command Center</h1>
-                <p className="text-[10px] text-white/40 font-mono mt-0.5 tracking-wider">{photos.length} OBJECTS INDEXED</p>
-            </div>
+      <header className="flex items-center justify-between pb-6 border-b border-[inherit]">
+         <div>
+            <h1 className="text-3xl font-black uppercase tracking-tight font-sans">Dashboard</h1>
+            <p className="text-[10px] opacity-40 font-mono mt-1 uppercase tracking-widest">{photos.length} OBJECTS INDEXED</p>
          </div>
          <div className="flex items-center gap-4">
-             <button onClick={() => fetchPhotos()} className="p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors">
+             <button onClick={() => fetchPhotos()} className="p-2 rounded-lg opacity-40 hover:opacity-100 hover:bg-gray-500/10 transition-colors">
                  <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
              </button>
-             <button onClick={handleLogout} className="px-4 py-2 border border-white/10 text-white/40 text-[10px] font-mono uppercase tracking-widest hover:bg-white/5 hover:text-white rounded transition-all">
+             <button onClick={handleLogout} className="px-4 py-2 border border-gray-200 dark:border-white/10 opacity-40 text-[10px] font-mono uppercase tracking-widest hover:opacity-100 hover:bg-gray-500/10 rounded transition-all">
                  Terminate
              </button>
          </div>
       </header>
-
-      <div className="relative z-10 pt-32 px-6 pb-20 max-w-7xl mx-auto space-y-12">
       
          {/* Upload Zone */}
-         <section>
+         <section className="relative z-10">
             <div 
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onClick={() => fileInputRef.current?.click()}
                 className={`relative h-64 border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden ${
-                    isUploading ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-white/10 hover:border-white/30 hover:bg-white/[0.02]'
+                    isUploading 
+                        ? 'border-[var(--accent)] bg-[var(--accent)]/5' 
+                        : 'border-gray-200 dark:border-white/10 hover:border-[#7C3AED]/30 dark:hover:border-[#7C3AED]/30 hover:bg-gray-50 dark:hover:bg-white/[0.02]'
                 }`}
             >
                 <input 
@@ -416,36 +410,33 @@ export default function AdminPage() {
                       <Loader2 className="w-10 h-10 text-[var(--accent)] animate-spin" />
                       <div className="text-center">
                           <p className="text-[var(--accent)] font-mono text-xs uppercase tracking-widest mb-2">{uploadStatus}</p>
-                          <div className="w-64 h-1 bg-black/20 rounded-full overflow-hidden">
+                          <div className="w-64 h-1 bg-black/10 dark:bg-black/20 rounded-full overflow-hidden">
                              <div className="h-full bg-[var(--accent)] transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                           </div>
                       </div>
                    </div>
                 ) : (
                    <>
-                      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-white/5 group-hover:border-[var(--accent)]/30">
-                          <Upload className="w-8 h-8 text-white/40 group-hover:text-[var(--accent)] transition-colors" />
+                      <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-gray-200 dark:border-white/5 bg-white dark:bg-white/5 group-hover:border-[var(--accent)]/30">
+                          <Upload className="w-8 h-8 text-gray-400 dark:text-white/40 group-hover:text-[var(--accent)] transition-colors" />
                       </div>
-                      <h3 className="text-lg font-light text-white tracking-widest uppercase">Drop Source Material</h3>
-                      <p className="text-white/30 font-mono text-xs mt-2 uppercase tracking-wider">or click to initialize stream</p>
+                      <h3 className="text-lg font-bold tracking-tight uppercase">Drop Source Material</h3>
+                      <p className="opacity-40 font-mono text-xs mt-2 uppercase tracking-wider">or click to initialize stream</p>
                    </>
                 )}
-                
-                {/* Decoration */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20 pointer-events-none" />
             </div>
          </section>
 
          {/* Grid */}
-         <section>
+         <section className="relative z-10">
             <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-white/50">Database Matrix</h2>
+                <h2 className="text-xs font-mono uppercase tracking-[0.2em] opacity-40 font-bold">Database Matrix</h2>
             </div>
             
             {photos.length === 0 && !loading ? (
-                <div className="py-20 text-center border border-white/5 rounded-2xl bg-white/[0.01]">
-                    <ImageIcon className="w-10 h-10 text-white/10 mx-auto mb-4" />
-                    <p className="text-white/20 font-mono text-xs uppercase tracking-widest">No vectors found</p>
+                <div className="py-24 text-center border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
+                    <ImageIcon className="w-12 h-12 text-gray-200 dark:text-white/10 mx-auto mb-4" />
+                    <p className="opacity-30 font-mono text-xs uppercase tracking-widest">No vectors found</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -453,14 +444,14 @@ export default function AdminPage() {
                         <div 
                             key={p.id} 
                             onClick={() => toggleSelection(p.id)}
-                            className={`relative aspect-[3/4] group bg-gray-900 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                                selectedIds.has(p.id) ? 'border-[var(--accent)] scale-[0.98] ring-4 ring-[var(--accent)]/20' : 'border-white/5 hover:border-white/20'
+                            className={`relative aspect-[3/4] group rounded-xl overflow-hidden border-2 transition-all cursor-pointer bg-gray-100 dark:bg-gray-900 ${
+                                selectedIds.has(p.id) ? 'border-[var(--accent)] scale-[0.98] ring-4 ring-[var(--accent)]/20' : 'border-transparent hover:border-gray-200 dark:hover:border-white/20'
                             }`}
                         >
                             <img 
                                 src={imageUrls[p.full_path] || `https://placehold.co/400x600/101010/FFF?text=Loading`} 
                                 alt="" 
-                                className={`w-full h-full object-cover transition-opacity duration-500 ${selectedIds.has(p.id) ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}
+                                className={`w-full h-full object-cover transition-opacity duration-500 ${selectedIds.has(p.id) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`}
                             />
                             
                             {/* Selection Checkmark */}
@@ -492,27 +483,26 @@ export default function AdminPage() {
                 </div>
             )}
          </section>
-      </div>
 
-      {/* Bulk Actions Bar */}
+      {/* Bulk Actions Bar (Floating) */}
       {selectedIds.size > 0 && (
-          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-2xl px-8 py-5 rounded-[2rem] border border-white/10 shadow-2xl flex items-center gap-10 animate-in slide-in-from-bottom-10 duration-500">
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-white dark:bg-black/80 backdrop-blur-2xl px-8 py-5 rounded-[2rem] border border-gray-200 dark:border-white/10 shadow-2xl flex items-center gap-10 animate-in slide-in-from-bottom-10 duration-500">
               <div className="flex flex-col">
                   <span className="text-[var(--accent)] font-bold text-xs uppercase tracking-widest">{selectedIds.size} SELECTED</span>
-                  <span className="text-[9px] font-mono text-white/30 uppercase mt-0.5">Awaiting instruction</span>
+                  <span className="text-[9px] font-mono opacity-40 uppercase mt-0.5">Awaiting instruction</span>
               </div>
-              <div className="w-px h-10 bg-white/10" />
+              <div className="w-px h-10 bg-gray-200 dark:bg-white/10" />
               <button 
                 onClick={handleCreateBundle}
                 disabled={isBundleCreating}
-                className="px-8 py-3 bg-white text-black font-mono text-[10px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all flex items-center gap-2"
+                className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black font-mono text-[10px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all flex items-center gap-2"
               >
                   {isBundleCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Create Bundle
               </button>
               <button 
                 onClick={() => setSelectedIds(new Set())}
-                className="text-white/40 hover:text-white text-[10px] font-mono uppercase tracking-widest transition-colors"
+                className="opacity-40 hover:opacity-100 text-[10px] font-mono uppercase tracking-widest transition-colors"
               >
                   Clear
               </button>
@@ -521,16 +511,16 @@ export default function AdminPage() {
 
       {/* Bundle Result Dialog */}
       {createdBundle && (
-          <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
-              <div className="bg-[#0a0a0a] border border-white/10 p-12 rounded-[2.5rem] max-w-md w-full text-center space-y-8 animate-in zoom-in duration-300">
+          <div className="fixed inset-0 z-[200] bg-black/60 dark:bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 p-12 rounded-[2.5rem] max-w-md w-full text-center space-y-8 animate-in zoom-in duration-300 shadow-2xl">
                   <div className="w-20 h-20 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto">
                       <CheckCircle2 className="w-10 h-10 text-green-500" />
                   </div>
                   <div>
-                      <h3 className="text-2xl font-light text-white tracking-widest uppercase">Bundle Initialized</h3>
-                      <p className="text-white/30 font-mono text-[10px] mt-2 uppercase tracking-widest">Share this unique event URL</p>
+                      <h3 className="text-2xl font-light tracking-widest uppercase">Bundle Initialized</h3>
+                      <p className="opacity-40 font-mono text-[10px] mt-2 uppercase tracking-widest">Share this unique event URL</p>
                   </div>
-                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                  <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/10">
                       <p className="text-[var(--accent)] font-mono text-[10px] break-all uppercase tracking-widest">ID: {createdBundle.id}</p>
                   </div>
                   <div className="flex flex-col gap-4">
@@ -539,13 +529,13 @@ export default function AdminPage() {
                             navigator.clipboard.writeText(`${window.location.origin}${createdBundle.url}`);
                             alert("Link copied!");
                         }}
-                        className="w-full py-4 bg-white text-black font-mono text-xs font-bold uppercase tracking-widest rounded-xl hover:opacity-90 transition-all"
+                        className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-mono text-xs font-bold uppercase tracking-widest rounded-xl hover:opacity-90 transition-all"
                       >
                           Copy Gallery Link
                       </button>
                       <button 
                         onClick={() => setCreatedBundle(null)}
-                        className="w-full py-4 border border-white/10 text-white/40 hover:text-white transition-all font-mono text-xs uppercase tracking-widest rounded-xl"
+                        className="w-full py-4 border border-gray-200 dark:border-white/10 opacity-40 hover:opacity-100 transition-all font-mono text-xs uppercase tracking-widest rounded-xl"
                       >
                           Dismiss
                       </button>
@@ -553,6 +543,6 @@ export default function AdminPage() {
               </div>
           </div>
       )}
-    </main>
+    </div>
   );
 }

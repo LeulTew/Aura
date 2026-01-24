@@ -61,3 +61,4 @@ docs/test_credentials.md
 apps/sync-agent/src-tauri/target/
 apps/sync-agent/dist/
 apps/sync-agent/node_modules/
+key.json
