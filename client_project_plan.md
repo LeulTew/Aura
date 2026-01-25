@@ -112,20 +112,26 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Tenant Admin**: Manage Team (Add/Remove), Files, and Settings.
 - [x] **Scoped Queries**: Backend enforces `org_id` on all operations.
 
-### Phase 5: Admin Polish & Security (Missing Components) [NEXT UP]
+### Phase 5: Admin Polish & Security (Missing Components) [COMPLETED]
 
 **Goal**: Fill the gaps identified in the "Coming Soon" sections of the Admin UI.
 
 #### 5A: Team Management Real-Time
 
-- [ ] **Email Invites**: Replace mocked `handleInvite` in `/admin/team/page.tsx` with real SendGrid/Resend API call.
-- [ ] **Auth Sign-Up**: Invite link should lead to `signup?token=...` flow to create actual Supabase Auth user.
+- [x] **Email Invites**: Replace mocked `handleInvite` in `/admin/team/page.tsx` with real SendGrid/Resend API call.
+- [x] **Auth Sign-Up**: Invite link should lead to `signup?token=...` flow to create actual Supabase Auth user.
 
 #### 5B: Settings Completion
 
-- [ ] **Security Tab**: Implement 2FA toggle and "Log out all devices" in `/admin/settings`.
-- [ ] **Notifications Tab**: Email preference toggles (`billing_alerts`, `usage_warnings`).
-- [ ] **Profile Edit**: Allow users to change their own Avatar/DisplayName.
+- [x] **Security Tab**: Implement 2FA toggle and "Log out all devices" in `/admin/settings`.
+- [x] **Notifications Tab**: Email preference toggles (`billing_alerts`, `usage_warnings`).
+- [x] **Profile Edit**: Allow users to change their own Avatar/DisplayName.
+
+#### 5C: Refactoring & Quality Assurance [COMPLETED]
+
+- [x] **Backend**: Modularized `main.py` into routers (`auth`, `profile`, `admin`, `photos`).
+- [x] **Frontend**: Extracted logic into custom hooks (`useAdminAuth`, `useOrganization`, `useUserProfile`).
+- [x] **Quality**: Verified types, linting, and best practices.
 
 ### Phase 6: Multi-Tenant Business Control [NEW PRIORITY]
 

@@ -1,7 +1,12 @@
 
 import pytest
+import sys
+import os
 from unittest.mock import MagicMock, patch
-from main import invite_user, InviteRequest
+
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from routers.admin import invite_user, InviteRequest
 
 # Mock Auth Context
 def mock_auth_admin():
@@ -36,7 +41,7 @@ async def test_invite_success():
     # Mock log_usage (table insert)
     mock_supabase.table.return_value.insert.return_value.execute.return_value = MagicMock()
 
-    with patch("database_supabase.get_client", return_value=mock_supabase):
+    with patch("routers.admin.get_client", return_value=mock_supabase):
         req = InviteRequest(email="newbie@test.com", role="employee")
         auth = mock_auth_admin()
         
@@ -72,7 +77,7 @@ async def test_invite_fail_handling():
     mock_supabase = MagicMock()
     mock_supabase.auth.admin.invite_user_by_email.side_effect = Exception("User already exists")
     
-    with patch("database_supabase.get_client", return_value=mock_supabase):
+    with patch("routers.admin.get_client", return_value=mock_supabase):
         req = InviteRequest(email="exists@test.com", role="employee")
         auth = mock_auth_admin()
         
