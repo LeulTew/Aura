@@ -1,0 +1,25 @@
+steps:
+  # Build the container image
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-t", "gcr.io/$PROJECT_ID/aura-backend", "."]
+
+  # Push the container image to Container Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/aura-backend"]
+
+  # Deploy container image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "aura-backend"
+      - "--image"
+      - "gcr.io/$PROJECT_ID/aura-backend"
+      - "--region"
+      - "us-central1"
+      - "--allow-unauthenticated"
+
+# Use high CPU machine to handle InsightFace compilation
+options:
+  machineType: "E2_HIGHCPU_8"
