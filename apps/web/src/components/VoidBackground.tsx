@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 
 export default function VoidBackground() {
   const auraRef = useRef<HTMLDivElement>(null);
@@ -49,10 +50,12 @@ export default function VoidBackground() {
 
       {/* Cinematic lens flare */}
       <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-screen z-0">
-        <img 
+        <Image 
            src="/lens_flare_overlay_premium_1768033818263.png" 
            alt="" 
-           className="w-full h-full object-cover"
+           fill
+           className="object-cover"
+           priority
         />
       </div>
     </>

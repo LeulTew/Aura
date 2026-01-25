@@ -2,179 +2,70 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Settings, Save, Loader2, Building2, Users, HardDrive, Bell, Shield, User, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
-
-import { parseJwt } from '@/utils/auth';
-
-interface OrgSettings {
-    name: string;
-    slug: string;
-    plan: string;
-    storage_limit_gb: number;
-    storage_used_bytes: number;
-}
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useOrganization } from '@/hooks/useOrganization';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function SettingsPage() {
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [orgId, setOrgId] = useState<string | null>(null);
-    const [settings, setSettings] = useState<OrgSettings | null>(null);
-    const [displayName, setDisplayName] = useState('');
-    const [editDisplayName, setEditDisplayName] = useState('');
+    const { orgId, userId, displayName: initialDisplayName, role } = useAdminAuth();
+    const { settings, loading: orgLoading, saving: orgSaving, error: orgError, saveSettings } = useOrganization(orgId);
+    const { 
+        preferences, 
+        savePreferences, 
+        profileSaving, 
+        logoutLoading, 
+        updateProfile, 
+        logoutAllSessions, 
+        error: profileError, 
+        success: profileSuccess,
+        clearMessages 
+    } = useUserProfile(userId);
+
     const [activeTab, setActiveTab] = useState('organization');
-    const [userId, setUserId] = useState<string | null>(null);
-    const [preferences, setPreferences] = useState({ email_alerts: true, weekly_report: true });
-    const [profileSaving, setProfileSaving] = useState(false);
-    const [logoutLoading, setLogoutLoading] = useState(false);
-    const [success, setSuccess] = useState('');
-    const [error, setError] = useState('');
-    
-    useEffect(() => {
-        const token = sessionStorage.getItem('admin_token');
-        if (token) {
-            const claims = parseJwt(token);
-            if (claims) {
-                setOrgId(claims.org_id || null);
-                setDisplayName(claims.display_name || '');
-                setEditDisplayName(claims.display_name || '');
-                setUserId(claims.sub);
-            }
-        }
-    }, []);
+    const [editDisplayName, setEditDisplayName] = useState('');
+    const [currentDisplayName, setCurrentDisplayName] = useState('');
+    const [orgName, setOrgName] = useState('');
 
     useEffect(() => {
-        if (orgId) fetchSettings();
-        if (userId) fetchPreferences();
-    }, [orgId, userId]);
-
-    const fetchSettings = async () => {
-        setLoading(true);
-        try {
-            const { data, error } = await supabase
-                .from('organizations')
-                .select('name, slug, plan, storage_limit_gb, storage_used_bytes')
-                .eq('id', orgId)
-                .single();
-            
-            if (error) throw error;
-            setSettings(data);
-        } catch (err) {
-            console.error('Failed to load settings:', err);
-        } finally {
-            setLoading(false);
+        if (initialDisplayName) {
+            setEditDisplayName(initialDisplayName);
+            setCurrentDisplayName(initialDisplayName);
         }
-    };
+    }, [initialDisplayName]);
 
-    const fetchPreferences = async () => {
-        if (!userId) return;
-        try {
-            const { data } = await supabase
-                .from('profiles')
-                .select('preferences')
-                .eq('id', userId)
-                .single();
-            
-            if (data?.preferences) {
-                setPreferences({ ...preferences, ...data.preferences });
-            }
-        } catch (err) {
-            console.error(err);
+    useEffect(() => {
+        if (settings) {
+            setOrgName(settings.name);
         }
-    };
+    }, [settings]);
 
-    const handleSavePreferences = async (newPrefs: typeof preferences) => {
-        if (!userId) return;
-        setPreferences(newPrefs); // Optimistic update
-        try {
-            await supabase
-                .from('profiles')
-                .update({ preferences: newPrefs })
-                .eq('id', userId);
-        } catch (err) {
-            console.error("Failed to save prefs", err);
-            // Revert would go here
-        }
-    };
+    // Handle tab change to clear messages
+    useEffect(() => {
+        clearMessages();
+    }, [activeTab]);
 
-    const handleSave = async () => {
-        if (!settings || !orgId) return;
-        setSaving(true);
-        try {
-            const { error } = await supabase
-                .from('organizations')
-                .update({ name: settings.name })
-                .eq('id', orgId);
-            
-            if (error) throw error;
+    const handleSaveOrganization = async () => {
+        if (!settings) return;
+        const success = await saveSettings(orgName);
+        if (success) {
             alert('Settings saved!');
-        } catch (err: any) {
-            alert('Failed to save: ' + err.message);
-        } finally {
-            setSaving(false);
+        } else if (orgError) {
+             alert('Failed to save: ' + orgError);
         }
     };
 
     const handleSaveProfile = async () => {
         if (!editDisplayName.trim()) return;
-        setProfileSaving(true);
-        setError('');
-        setSuccess('');
-        try {
-            const token = sessionStorage.getItem('admin_token');
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-            const res = await fetch(`${backendUrl}/api/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ display_name: editDisplayName })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setDisplayName(editDisplayName);
-                setSuccess('Profile updated successfully');
-            } else {
-                throw new Error(data.detail || 'Update failed');
-            }
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to update profile');
-        } finally {
-            setProfileSaving(false);
+        const success = await updateProfile(editDisplayName);
+        if (success) {
+            setCurrentDisplayName(editDisplayName);
         }
     };
 
-    const handleLogoutSessions = async () => {
+    const handleLogout = async () => {
         if (!confirm('This will log you out of all devices. Continue?')) return;
-        setLogoutLoading(true);
-        setError('');
-        setSuccess('');
-        try {
-            const token = sessionStorage.getItem('admin_token');
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-            const res = await fetch(`${backendUrl}/api/logout-sessions`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSuccess(data.message);
-                // Log user out locally after a delay
-                setTimeout(() => {
-                    sessionStorage.removeItem('admin_token');
-                    window.location.href = '/login';
-                }, 2000);
-            } else {
-                throw new Error(data.detail || 'Logout failed');
-            }
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to logout sessions');
-        } finally {
-            setLogoutLoading(false);
-        }
+        await logoutAllSessions();
     };
 
     const tabs = [
@@ -185,7 +76,7 @@ export default function SettingsPage() {
         { id: 'security', label: 'Security', icon: Shield },
     ];
 
-    if (loading) {
+    if (orgId && orgLoading) {
         return (
             <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 text-[#7C3AED] animate-spin" />
@@ -223,16 +114,16 @@ export default function SettingsPage() {
                 {/* Content */}
                 <div className="flex-1 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 rounded-2xl p-8 shadow-sm">
                     {/* Alerts */}
-                    {error && (
+                    {(profileError || orgError) && (
                         <div className="mb-6 p-4 border border-red-500/20 bg-red-500/5 flex items-center gap-4 text-red-500 rounded-xl">
                             <AlertCircle className="w-5 h-5 shrink-0" />
-                            <span className="font-mono text-xs">{error}</span>
+                            <span className="font-mono text-xs">{profileError || orgError}</span>
                         </div>
                     )}
-                    {success && (
+                    {profileSuccess && (
                         <div className="mb-6 p-4 border border-green-500/20 bg-green-500/5 flex items-center gap-4 text-green-500 rounded-xl">
                             <CheckCircle2 className="w-5 h-5 shrink-0" />
-                            <span className="font-mono text-xs">{success}</span>
+                            <span className="font-mono text-xs">{profileSuccess}</span>
                         </div>
                     )}
 
@@ -264,7 +155,7 @@ export default function SettingsPage() {
                             <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                                 <button
                                     onClick={handleSaveProfile}
-                                    disabled={profileSaving || editDisplayName === displayName}
+                                    disabled={profileSaving || editDisplayName === currentDisplayName}
                                     className="px-8 py-4 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 text-xs disabled:opacity-50"
                                 >
                                     {profileSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -282,8 +173,8 @@ export default function SettingsPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    value={settings.name}
-                                    onChange={(e) => setSettings({ ...settings, name: e.target.value })}
+                                    value={orgName}
+                                    onChange={(e) => setOrgName(e.target.value)}
                                     className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-4 text-sm font-medium focus:border-[#7C3AED] dark:focus:border-[#7C3AED] outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-white/20"
                                 />
                             </div>
@@ -314,11 +205,11 @@ export default function SettingsPage() {
                             </div>
                             <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                                 <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="px-8 py-4 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 text-xs"
+                                    onClick={handleSaveOrganization}
+                                    disabled={orgSaving || orgName === settings.name}
+                                    className="px-8 py-4 bg-[#7C3AED] text-white rounded-xl font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 text-xs disabled:opacity-50"
                                 >
-                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {orgSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     Save Changes
                                 </button>
                             </div>
@@ -351,7 +242,7 @@ export default function SettingsPage() {
                                     <p className="text-xs text-gray-500 dark:text-white/40 font-mono">Receive immediate emails for critical errors</p>
                                 </div>
                                 <button 
-                                    onClick={() => handleSavePreferences({ ...preferences, email_alerts: !preferences.email_alerts })}
+                                    onClick={() => savePreferences({ ...preferences, email_alerts: !preferences.email_alerts })}
                                     className={`w-12 h-6 rounded-full transition-colors relative ${preferences.email_alerts ? 'bg-[#7C3AED]' : 'bg-gray-200 dark:bg-white/10'}`}
                                 >
                                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${preferences.email_alerts ? 'left-7' : 'left-1'}`} />
@@ -364,7 +255,7 @@ export default function SettingsPage() {
                                     <p className="text-xs text-gray-500 dark:text-white/40 font-mono">Summary of storage usage and activity</p>
                                 </div>
                                 <button 
-                                    onClick={() => handleSavePreferences({ ...preferences, weekly_report: !preferences.weekly_report })}
+                                    onClick={() => savePreferences({ ...preferences, weekly_report: !preferences.weekly_report })}
                                     className={`w-12 h-6 rounded-full transition-colors relative ${preferences.weekly_report ? 'bg-[#7C3AED]' : 'bg-gray-200 dark:bg-white/10'}`}
                                 >
                                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${preferences.weekly_report ? 'left-7' : 'left-1'}`} />
@@ -395,7 +286,7 @@ export default function SettingsPage() {
                                     Signing out will invalidate all active sessions across all devices.
                                 </p>
                                 <button 
-                                    onClick={handleLogoutSessions}
+                                    onClick={handleLogout}
                                     disabled={logoutLoading}
                                     className="px-6 py-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
                                 >
