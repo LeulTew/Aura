@@ -135,12 +135,19 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ### Phase 6: Multi-Tenant Business Control [NEW PRIORITY]
 
-**Goal**: Empower the Business Owner to manage multiple studio locations (Tenants) from a central command center.
+**Goal**: Empower **Business Owners** (customers) to manage multiple studio locations from a single login, while enhancing **SuperAdmin** (Platform Owner) tools.
 
-- [ ] **Context Switching**: "Manage" button in SuperAdmin dashboard to instantly log in as the Admin of any specific studio tenant.
-  - _Mechanism_: `POST /api/superadmin/switch-tenant` mints a scoped `admin` token for the target organization.
-- [ ] **Unified Dashboard**: View aggregated health and storage stats across all studios.
-- [ ] **Global Team View**: (Optional) See all employees across all studios.
+**A. Business Owner (Franchise/Multi-Studio)**
+
+- [ ] **Unified Login**: Login once, access all owned studios.
+- [ ] **Studio Switcher**: Dropdown in Admin Dashboard to jump between owned studios.
+- [ ] **Owner Dashboard**: Aggregated view of storage/activity across all owned locations.
+- [ ] **Global Team**: Manage employees across the franchise.
+
+**B. SuperAdmin (Platform Owner)**
+
+- [ ] **Tenant Sudo**: "Manage" button to instantly context-switch into any tenant for support (already in backend).
+- [ ] **Platform Health**: Global system metrics (already planned).
 
 ### Phase 7: Advanced Sync (Desktop Agent) [BETA]
 

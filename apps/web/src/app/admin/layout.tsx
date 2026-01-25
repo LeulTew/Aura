@@ -9,6 +9,7 @@ import {
     Sun, Moon, Camera
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider';
+import StudioSwitcher from '@/components/StudioSwitcher';
 
 // JWT Parser
 interface JwtClaims {
@@ -154,13 +155,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     </button>
                 </div>
 
-                {/* Org Header */}
+                {/* Org Header with Studio Switcher */}
                 <div className="px-8 py-6 border-b border-[inherit]">
                     <p className="text-[10px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Organization</p>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 mb-3">
                         <div className={`w-2 h-2 rounded-full ${theme === 'light' ? 'bg-[#7C3AED]' : 'bg-[#7C3AED] shadow-[0_0_10px_#7C3AED]'}`} />
                         <span className="font-bold text-sm truncate">{orgName}</span>
                     </div>
+                    {/* Studio Switcher (shows if user manages multiple studios) */}
+                    <StudioSwitcher />
                 </div>
 
                 {/* Navigation */}

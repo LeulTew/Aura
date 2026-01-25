@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
-from routers import auth, profile, photos, admin
+from routers import auth, profile, photos, admin, superadmin, owner
 # Import dependencies to trigger lazy loading if needed, and for lifespan
 from dependencies import get_processor
 
@@ -24,8 +24,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Aura Core",
-    version="0.2.0",
-    description="Intelligent Photo Retrieval API with LanceDB",
+    version="0.3.0",
+    description="Intelligent Photo Retrieval API with Multi-Tenant Support",
     lifespan=lifespan
 )
 
@@ -42,6 +42,8 @@ app.include_router(photos.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
+app.include_router(superadmin.router)
+app.include_router(owner.router)
 
 @app.get("/")
 async def root():

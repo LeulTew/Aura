@@ -26,7 +26,7 @@ ROLE_REDIRECTS = {
 async def unified_login(req: LoginRequest):
     """
     Multi-tenant login with email/password via Supabase Auth.
-    Returns JWT with role, org context, and redirect path.
+    Returns JWT with role, org context, redirect path, and available orgs for multi-studio owners.
     """
     try:
         client = get_client()
@@ -59,7 +59,29 @@ async def unified_login(req: LoginRequest):
         org_slug = org_data.get("slug") if org_data else None
         org_name = org_data.get("name") if org_data else None
         
-        # 3. Build custom JWT with full context
+        # 3. Check for multiple organizations (multi-studio owner)
+        available_orgs = []
+        if role in ["admin", "superadmin"]:
+            try:
+                orgs_result = client.table("profile_organizations").select(
+                    "org_id, role, is_primary, organizations(name, slug)"
+                ).eq("user_id", str(user_id)).execute()
+                
+                if orgs_result.data and len(orgs_result.data) > 0:
+                    for po in orgs_result.data:
+                        org_info = po.get("organizations", {})
+                        available_orgs.append({
+                            "id": po["org_id"],
+                            "name": org_info.get("name", "Unknown"),
+                            "slug": org_info.get("slug", ""),
+                            "role": po.get("role", "admin"),
+                            "is_primary": po.get("is_primary", False)
+                        })
+            except Exception as e:
+                # Table might not exist yet, that's okay
+                logger.debug(f"profile_organizations lookup: {e}")
+        
+        # 4. Build custom JWT with full context
         token = jwt.encode({
             "sub": str(user_id),
             "email": user_email,
@@ -68,10 +90,11 @@ async def unified_login(req: LoginRequest):
             "org_slug": org_slug,
             "org_name": org_name,
             "display_name": profile.get("display_name"),
+            "multi_org": len(available_orgs) > 1,  # Flag for frontend
             "exp": datetime.now(timezone.utc) + timedelta(days=7)
         }, JWT_SECRET, algorithm="HS256")
         
-        # 4. Determine redirect
+        # 5. Determine redirect
         redirect_path = ROLE_REDIRECTS.get(role, "/admin")
         
         return LoginResponse(
@@ -83,7 +106,8 @@ async def unified_login(req: LoginRequest):
                 "email": user_email,
                 "role": role,
                 "display_name": profile.get("display_name"),
-                "org_name": org_name
+                "org_name": org_name,
+                "available_orgs": available_orgs if available_orgs else None
             }
         )
         
