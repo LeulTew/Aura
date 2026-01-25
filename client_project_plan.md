@@ -149,6 +149,12 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Tenant Sudo**: "Manage" button to instantly context-switch into any tenant for support (already in backend).
 - [x] **Platform Health**: Global system metrics (already planned).
 
+**Other Verified Items**:
+
+- [x] **Deployment**: Added Dockerfile to ensure reliable builds on Google Cloud Run.
+- [x] **Test Plan**: Created `test.md` covering all user flows (End-to-End).
+- [x] **Security**: Verified App-Level RLS enforcement.
+
 ### Phase 7: Advanced Sync (Desktop Agent) [BETA]
 
 **Goal**: Robust bi-directional sync for offline-first studios.
