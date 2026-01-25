@@ -22,6 +22,7 @@ pub struct UploadResult {
     pub error: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct SyncEngine {
     config: SyncConfig,
     client: reqwest::Client,

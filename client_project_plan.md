@@ -161,9 +161,9 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 **Goal**: Robust bi-directional sync for offline-first studios.
 
 - [x] **One-Way Sync**: Local -> Cloud (Implemented).
-- [ ] **Bi-Directional**: Cloud Deletes -> Local Trash (Missing).
-- [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios.
-- [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search.
+- [ ] **Bi-Directional**: Cloud Deletes -> Local Trash (Planned).
+- [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios (Planned).
+- [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search (Deferred).
 
 ### Phase 8: Future Roadmap (Post-Launch)
 

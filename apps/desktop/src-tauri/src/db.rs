@@ -23,8 +23,11 @@ pub struct FileEntry {
     pub folder_id: i64,
 }
 
+use std::sync::{Arc, Mutex};
+
+#[derive(Clone)]
 pub struct Database {
-    conn: Connection,
+    conn: Arc<Mutex<Connection>>,
 }
 
 impl Database {
@@ -66,19 +69,21 @@ impl Database {
             "
         )?;
         
-        Ok(Self { conn })
+        Ok(Self { conn: Arc::new(Mutex::new(conn)) })
     }
     
     pub fn add_watched_folder(&self, path: &str) -> Result<i64> {
-        self.conn.execute(
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
             "INSERT OR IGNORE INTO watched_folders (path) VALUES (?1)",
             params![path],
         )?;
-        Ok(self.conn.last_insert_rowid())
+        Ok(conn.last_insert_rowid())
     }
     
     pub fn get_watched_folders(&self) -> Result<Vec<WatchedFolder>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
             "SELECT id, path, enabled FROM watched_folders WHERE enabled = 1"
         )?;
         
@@ -94,17 +99,19 @@ impl Database {
     }
     
     pub fn upsert_file(&self, path: &str, hash: &str, mod_time: i64, folder_id: i64) -> Result<i64> {
-        self.conn.execute(
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
             "INSERT INTO file_index (path, hash, mod_time, sync_status, folder_id) 
              VALUES (?1, ?2, ?3, 'pending', ?4)
              ON CONFLICT(path) DO UPDATE SET hash = ?2, mod_time = ?3, sync_status = 'pending'",
             params![path, hash, mod_time, folder_id],
         )?;
-        Ok(self.conn.last_insert_rowid())
+        Ok(conn.last_insert_rowid())
     }
     
     pub fn get_pending_files(&self, limit: i64) -> Result<Vec<FileEntry>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
             "SELECT id, path, hash, mod_time, sync_status, folder_id 
              FROM file_index WHERE sync_status = 'pending' LIMIT ?1"
         )?;
@@ -124,7 +131,8 @@ impl Database {
     }
     
     pub fn mark_synced(&self, file_id: i64) -> Result<()> {
-        self.conn.execute(
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
             "UPDATE file_index SET sync_status = 'synced' WHERE id = ?1",
             params![file_id],
         )?;
@@ -132,15 +140,31 @@ impl Database {
     }
     
     pub fn get_stats(&self) -> Result<(i64, i64, i64)> {
-        let total: i64 = self.conn.query_row(
+        let conn = self.conn.lock().unwrap();
+        let total: i64 = conn.query_row(
             "SELECT COUNT(*) FROM file_index", [], |row| row.get(0)
         )?;
-        let synced: i64 = self.conn.query_row(
+        let synced: i64 = conn.query_row(
             "SELECT COUNT(*) FROM file_index WHERE sync_status = 'synced'", [], |row| row.get(0)
         )?;
-        let pending: i64 = self.conn.query_row(
+        let pending: i64 = conn.query_row(
             "SELECT COUNT(*) FROM file_index WHERE sync_status = 'pending'", [], |row| row.get(0)
         )?;
         Ok((total, synced, pending))
+    }
+    
+    pub fn remove_watched_folder(&self, folder_id: i64) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        // Delete associated files first
+        conn.execute(
+            "DELETE FROM file_index WHERE folder_id = ?1",
+            params![folder_id],
+        )?;
+        // Delete the folder
+        conn.execute(
+            "DELETE FROM watched_folders WHERE id = ?1",
+            params![folder_id],
+        )?;
+        Ok(())
     }
 }
