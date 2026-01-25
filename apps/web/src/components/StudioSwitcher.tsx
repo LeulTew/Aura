@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Building2, ChevronDown, Check, Loader2 } from 'lucide-react';
 import { parseJwt } from '@/utils/auth';
+import { reloadPage } from '@/utils/navigation';
 
 interface Organization {
     id: string;
@@ -97,7 +98,7 @@ export default function StudioSwitcher() {
                 // Store new token
                 sessionStorage.setItem('admin_token', data.token);
                 // Reload page to refresh context
-                window.location.reload();
+                reloadPage();
             }
         } catch (err) {
             console.error('Failed to switch organization:', err);
