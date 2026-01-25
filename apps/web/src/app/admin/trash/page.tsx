@@ -87,7 +87,7 @@ export default function TrashPage() {
             } else {
                 setError(data.error || 'Failed to fetch trash');
             }
-        } catch (_err) {
+        } catch {
             setError('Network error');
         } finally {
             setLoading(false);
@@ -113,7 +113,7 @@ export default function TrashPage() {
             } else {
                 setError(data.error || 'Restore failed');
             }
-        } catch (_err) {
+        } catch {
             setError('Network error during restore');
         } finally {
             setActionLoading(null);
@@ -139,7 +139,7 @@ export default function TrashPage() {
             } else {
                 setError(data.error || 'Delete failed');
             }
-        } catch (_err) {
+        } catch {
             setError('Network error during delete');
         } finally {
             setActionLoading(null);
