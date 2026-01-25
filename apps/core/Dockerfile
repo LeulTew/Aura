@@ -4,9 +4,10 @@ FROM python:3.10-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8000
+    PORT=8080
 
 # Install system dependencies required for InsightFace and OpenCV
+# libgl1 is for opencv (replacing deprecated libgl1-mesa-glx)
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -25,8 +26,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel cython && \
 # Copy application code
 COPY . .
 
-# Expose port (Cloud Run sets this env var automatically, but good for local)
-EXPOSE 8000
+# Expose port
+EXPOSE 8080
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

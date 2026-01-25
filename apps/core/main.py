@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup/shutdown event handler."""
     # Initialize processor on startup
-    logger.info("Initializing FaceProcessor on startup...")
-    get_processor()
-    logger.info("FaceProcessor ready!")
+    logger.info("Initializing FaceProcessor on startup... (Lazy Loading Enabled - skipping eager load)")
+    # get_processor()  <-- Commented out to prevent timeout
+    logger.info("FaceProcessor ready (lazy)!")
     yield
     # Cleanup on shutdown
     logger.info("Shutting down...")
