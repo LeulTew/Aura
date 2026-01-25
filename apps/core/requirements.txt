@@ -10,3 +10,4 @@ lancedb
 supabase
 pydantic-settings
 pyjwt
+qrcode

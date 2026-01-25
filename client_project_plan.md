@@ -154,6 +154,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Deployment**: Added Dockerfile to ensure reliable builds on Google Cloud Run.
 - [x] **Test Plan**: Created `test.md` covering all user flows (End-to-End).
 - [x] **Security**: Verified App-Level RLS enforcement.
+- [x] **Frontend Config**: Identified required Vercel environment variables (`NEXT_PUBLIC_BACKEND_URL`).
 
 ### Phase 7: Advanced Sync (Desktop Agent) [BETA]
 
