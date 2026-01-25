@@ -133,21 +133,21 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Frontend**: Extracted logic into custom hooks (`useAdminAuth`, `useOrganization`, `useUserProfile`).
 - [x] **Quality**: Verified types, linting, and best practices.
 
-### Phase 6: Multi-Tenant Business Control [NEW PRIORITY]
+### Phase 6: Multi-Tenant Business Control [COMPLETED]
 
 **Goal**: Empower **Business Owners** (customers) to manage multiple studio locations from a single login, while enhancing **SuperAdmin** (Platform Owner) tools.
 
 **A. Business Owner (Franchise/Multi-Studio)**
 
-- [ ] **Unified Login**: Login once, access all owned studios.
-- [ ] **Studio Switcher**: Dropdown in Admin Dashboard to jump between owned studios.
-- [ ] **Owner Dashboard**: Aggregated view of storage/activity across all owned locations.
-- [ ] **Global Team**: Manage employees across the franchise.
+- [x] **Unified Login**: Login once, access all owned studios.
+- [x] **Studio Switcher**: Dropdown in Admin Dashboard to jump between owned studios.
+- [x] **Owner Dashboard**: Aggregated view of storage/activity across all owned locations.
+- [x] **Global Team**: Manage employees across the franchise.
 
 **B. SuperAdmin (Platform Owner)**
 
-- [ ] **Tenant Sudo**: "Manage" button to instantly context-switch into any tenant for support (already in backend).
-- [ ] **Platform Health**: Global system metrics (already planned).
+- [x] **Tenant Sudo**: "Manage" button to instantly context-switch into any tenant for support (already in backend).
+- [x] **Platform Health**: Global system metrics (already planned).
 
 ### Phase 7: Advanced Sync (Desktop Agent) [BETA]
 
