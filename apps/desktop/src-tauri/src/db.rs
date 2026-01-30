@@ -21,6 +21,8 @@ pub struct FileEntry {
     pub mod_time: i64,
     pub sync_status: String, // "pending", "synced", "error"
     pub folder_id: i64,
+    pub cloud_hash: Option<String>,
+    pub conflict_state: String, // "none", "conflict", "resolved"
 }
 
 use std::sync::{Arc, Mutex};
@@ -54,6 +56,9 @@ impl Database {
                 mod_time INTEGER NOT NULL,
                 sync_status TEXT NOT NULL DEFAULT 'pending',
                 folder_id INTEGER NOT NULL,
+                ai_scanned INTEGER DEFAULT 0,
+                cloud_hash TEXT,
+                conflict_state TEXT DEFAULT 'none',
                 FOREIGN KEY (folder_id) REFERENCES watched_folders(id)
             );
             
@@ -81,9 +86,13 @@ impl Database {
             "
         )?;
 
-        // Migration: Add ai_scanned column if it doesn't exist
-        // We ignore the error if column already exists
+        // Migrations
+        // Add ai_scanned column if it doesn't exist
         let _ = conn.execute("ALTER TABLE file_index ADD COLUMN ai_scanned INTEGER DEFAULT 0", []);
+        // Add cloud_hash column if it doesn't exist
+        let _ = conn.execute("ALTER TABLE file_index ADD COLUMN cloud_hash TEXT", []);
+        // Add conflict_state column if it doesn't exist
+        let _ = conn.execute("ALTER TABLE file_index ADD COLUMN conflict_state TEXT DEFAULT 'none'", []);
         
         Ok(Self { conn: Arc::new(Mutex::new(conn)) })
     }
@@ -117,9 +126,11 @@ impl Database {
     pub fn upsert_file(&self, path: &str, hash: &str, mod_time: i64, folder_id: i64) -> Result<i64> {
         let conn = self.conn.lock().unwrap();
         // Reset ai_scanned to 0 on update since file changed
+        // We preserve cloud_hash and conflict_state on update for now, 
+        // but reset sync_status to pending.
         conn.execute(
-            "INSERT INTO file_index (path, hash, mod_time, sync_status, folder_id, ai_scanned) 
-             VALUES (?1, ?2, ?3, 'pending', ?4, 0)
+            "INSERT INTO file_index (path, hash, mod_time, sync_status, folder_id, ai_scanned, conflict_state) 
+             VALUES (?1, ?2, ?3, 'pending', ?4, 0, 'none')
              ON CONFLICT(path) DO UPDATE SET 
                 hash = ?2, 
                 mod_time = ?3, 
@@ -133,7 +144,7 @@ impl Database {
     pub fn get_pending_files(&self, limit: i64) -> Result<Vec<FileEntry>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, path, hash, mod_time, sync_status, folder_id 
+            "SELECT id, path, hash, mod_time, sync_status, folder_id, cloud_hash, conflict_state 
              FROM file_index WHERE sync_status = 'pending' LIMIT ?1"
         )?;
         
@@ -145,6 +156,8 @@ impl Database {
                 mod_time: row.get(3)?,
                 sync_status: row.get(4)?,
                 folder_id: row.get(5)?,
+                cloud_hash: row.get(6)?,
+                conflict_state: row.get(7)?,
             })
         })?;
         
@@ -154,7 +167,7 @@ impl Database {
     pub fn get_unscanned_files(&self, limit: i64) -> Result<Vec<FileEntry>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, path, hash, mod_time, sync_status, folder_id 
+            "SELECT id, path, hash, mod_time, sync_status, folder_id, cloud_hash, conflict_state 
              FROM file_index WHERE ai_scanned = 0 LIMIT ?1"
         )?;
         
@@ -166,6 +179,8 @@ impl Database {
                 mod_time: row.get(3)?,
                 sync_status: row.get(4)?,
                 folder_id: row.get(5)?,
+                cloud_hash: row.get(6)?,
+                conflict_state: row.get(7)?,
             })
         })?;
         

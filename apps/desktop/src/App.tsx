@@ -22,7 +22,7 @@ interface SyncConfig {
   bucket: string;
 }
 
-type Tab = "dashboard" | "settings";
+type Tab = "dashboard" | "settings" | "conflicts";
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
@@ -146,6 +146,12 @@ function App() {
             onClick={() => setActiveTab("settings")}
           >
             Settings
+          </button>
+          <button
+            className={activeTab === "conflicts" ? "active" : ""}
+            onClick={() => setActiveTab("conflicts")}
+          >
+            Conflicts
           </button>
         </nav>
         <div className="status-indicator">
@@ -302,6 +308,41 @@ function App() {
           <button className="save-button" onClick={handleSaveConfig}>
             Save Configuration
           </button>
+        </section>
+      )}
+
+      {activeTab === "conflicts" && (
+        <section className="conflicts-section">
+          <div className="section-header">
+            <h2>Sync Conflicts</h2>
+            <div className="conflict-actions">
+              <button className="resolve-all-btn">Resolve All (Keep Local)</button>
+            </div>
+          </div>
+
+          <div className="empty-state">
+            <p>No conflicts detected.</p>
+            <p className="hint">
+              Great! Your local files are in sync with the cloud.
+            </p>
+          </div>
+          
+          {/* 
+          TODO: Connect to backend get_conflicts command
+          <ul className="conflict-list">
+             Example item structure for future implementation
+            <li className="conflict-item">
+              <div className="conflict-info">
+                <span className="file-name">IMG_9921.jpg</span>
+                <span className="file-path">/Users/leul/Photos/Wedding/IMG_9921.jpg</span>
+              </div>
+              <div className="resolution-options">
+                <button>Keep Local (Newer)</button>
+                <button>Keep Cloud</button>
+              </div>
+            </li>
+          </ul> 
+          */}
         </section>
       )}
 

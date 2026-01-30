@@ -47,4 +47,6 @@ The security architecture relies on Supabase Row Level Security (RLS) to enforce
 ## Action Plan
 
 1.  **RPC Security**: [DONE] Remediated usage of global `match_faces`.
-2.  **Profile Security**: [PENDING] Verify if `profiles` update policy allows role change.
+2.  **Profile Security**: [REMEDIATED] Created SQL trigger `007_fix_profile_role_security.sql` to prevent role/org_id escalation.
+    - **Mechanism**: `BEFORE UPDATE` trigger raises exception if `role` or `org_id` changes and user is not superadmin.
+    - **Verification**: Trigger logic ensures `auth.uid()` checks against `profiles` table before allowing privilege changes.

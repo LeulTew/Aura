@@ -165,6 +165,28 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios (Planned).
 - [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search (Deferred).
 
+### Phase 7B: Production Readiness [IN PROGRESS]
+
+**Goal**: Security hardening, performance validation, and sync completion.
+
+**7B.1: Security Audit Completion**
+
+- [ ] SQL trigger to prevent role/org_id privilege escalation.
+- [ ] Verify column-level restrictions on `profiles` table.
+- [ ] Update `security_audit.md` with remediation.
+
+**7B.2: Load Testing**
+
+- [ ] Locust test script targeting 100 concurrent users.
+- [ ] P95 latency validation (< 500ms for /health, < 2s for /api/search).
+- [ ] Document results and optimize if needed.
+
+**7B.3: Bi-Directional Sync**
+
+- [ ] Add sync state columns (`cloud_hash`, `conflict_state`) to local DB.
+- [ ] Implement `cloud_sync.rs` for change detection.
+- [ ] Create Conflict Resolution UI for the Desktop Agent.
+
 ### Phase 8: Future Roadmap (Post-Launch)
 
 - [ ] **Commercialization (Billing)**: Self-serve SaaS with Stripe, invoicing, and hard storage limits.

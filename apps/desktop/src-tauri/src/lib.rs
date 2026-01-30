@@ -6,6 +6,7 @@ mod db;
 mod scanner;
 mod sync;
 mod watcher;
+mod cloud_sync;
 
 #[cfg(feature = "ai")]
 mod ml;
