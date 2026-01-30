@@ -7,6 +7,9 @@ mod scanner;
 mod sync;
 mod watcher;
 
+#[cfg(feature = "ai")]
+mod ml;
+
 #[cfg(test)]
 mod tests;
 
@@ -282,6 +285,9 @@ pub fn run() {
                     // Start Sync Worker
                     start_sync_worker(handle.clone());
                     start_watcher_worker(handle.clone());
+
+                    #[cfg(feature = "ai")]
+                    start_indexer_worker(handle.clone());
                 }
                 Err(e) => {
                     eprintln!("Aura Desktop: Failed to initialize database: {}", e);
@@ -300,4 +306,108 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(feature = "ai")]
+fn start_indexer_worker(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        use ml::FaceEngine;
+        use std::path::Path;
+        use image::GenericImageView;
+        
+        println!("Aura AI: Initializing Face Engine...");
+        
+        let mut engine = match FaceEngine::new() {
+            Ok(e) => {
+                println!("Aura AI: Models loaded successfully.");
+                e
+            },
+            Err(e) => {
+                eprintln!("Aura AI: Failed to load models: {}. Indexing disabled.", e);
+                return;
+            }
+        };
+
+        loop {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            
+            let state: State<AppState> = app.state();
+            let db_lock = match state.db.lock() {
+                Ok(lock) => lock,
+                Err(_) => continue,
+            };
+            let db = match db_lock.as_ref() {
+                Some(db) => db.clone(),
+                None => continue,
+            };
+            drop(db_lock); // Release lock
+            
+            // Get batch of files
+            match db.get_unscanned_files(5) {
+                Ok(files) => {
+                    for file in files {
+                        println!("Aura AI: Processing {}", file.path);
+                        
+                        // Load image
+                        let img_path = Path::new(&file.path);
+                        let img = match image::open(img_path) {
+                            Ok(img) => img,
+                            Err(e) => {
+                                eprintln!("Aura AI: Failed to open image {}: {}", file.path, e);
+                                let _ = db.mark_scanned(file.id);
+                                continue;
+                            }
+                        };
+                        
+                        // Detect
+                        match engine.detect_faces(&img) {
+                            Ok(faces) => {
+                                if !faces.is_empty() {
+                                    println!("Aura AI: Detected {} faces in {}", faces.len(), file.path);
+                                    
+                                    for face in faces {
+                                        // Crop face
+                                        let bbox = face.bbox;
+                                        // Ensure bounds
+                                        let x = bbox[0].max(0.0) as u32;
+                                        let y = bbox[1].max(0.0) as u32;
+                                        let w = (bbox[2] - bbox[0]).max(1.0) as u32;
+                                        let h = (bbox[3] - bbox[1]).max(1.0) as u32;
+                                        
+                                        // Skip if crop is invalid
+                                        if x + w > img.width() || y + h > img.height() {
+                                            continue;
+                                        }
+
+                                        let crop = img.crop_imm(x, y, w, h).to_rgb8();
+                                        
+                                        // Extract Embedding
+                                        match engine.extract_embedding(&crop) {
+                                            Ok(embedding) => {
+                                                // Save to DB
+                                                if let Err(e) = db.save_embedding(file.id, &embedding, face.score) {
+                                                    eprintln!("Aura AI: Failed to save embedding: {}", e);
+                                                } else {
+                                                    println!("Aura AI: Saved embedding for file {}", file.id);
+                                                }
+                                            },
+                                            Err(e) => eprintln!("Aura AI: Embedding extraction failed: {}", e),
+                                        }
+                                    }
+                                }
+                                let _ = db.mark_scanned(file.id);
+                            },
+                            Err(e) => {
+                                eprintln!("Aura AI: Inference failed: {}", e);
+                                // Mark scanned to avoid retry loop on bad file? Maybe.
+                                // Or retry logic. For now, optimize progress.
+                                let _ = db.mark_scanned(file.id);
+                            },
+                        }
+                    }
+                },
+                Err(e) => eprintln!("Aura AI: DB Error: {}", e),
+            }
+        }
+    });
 }

@@ -35,6 +35,9 @@ impl Database {
         let db_path = app_data_dir.join("aura.db");
         let conn = Connection::open(db_path)?;
         
+        // Enable WAL mode for concurrency
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        
         // Initialize schema
         conn.execute_batch(
             "
@@ -66,8 +69,21 @@ impl Database {
             
             CREATE INDEX IF NOT EXISTS idx_file_sync_status ON file_index(sync_status);
             CREATE INDEX IF NOT EXISTS idx_sync_queue_priority ON sync_queue(priority DESC);
+            
+            CREATE TABLE IF NOT EXISTS face_embeddings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                embedding BLOB NOT NULL,
+                score REAL,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (file_id) REFERENCES file_index(id) ON DELETE CASCADE
+            );
             "
         )?;
+
+        // Migration: Add ai_scanned column if it doesn't exist
+        // We ignore the error if column already exists
+        let _ = conn.execute("ALTER TABLE file_index ADD COLUMN ai_scanned INTEGER DEFAULT 0", []);
         
         Ok(Self { conn: Arc::new(Mutex::new(conn)) })
     }
@@ -100,10 +116,15 @@ impl Database {
     
     pub fn upsert_file(&self, path: &str, hash: &str, mod_time: i64, folder_id: i64) -> Result<i64> {
         let conn = self.conn.lock().unwrap();
+        // Reset ai_scanned to 0 on update since file changed
         conn.execute(
-            "INSERT INTO file_index (path, hash, mod_time, sync_status, folder_id) 
-             VALUES (?1, ?2, ?3, 'pending', ?4)
-             ON CONFLICT(path) DO UPDATE SET hash = ?2, mod_time = ?3, sync_status = 'pending'",
+            "INSERT INTO file_index (path, hash, mod_time, sync_status, folder_id, ai_scanned) 
+             VALUES (?1, ?2, ?3, 'pending', ?4, 0)
+             ON CONFLICT(path) DO UPDATE SET 
+                hash = ?2, 
+                mod_time = ?3, 
+                sync_status = 'pending',
+                ai_scanned = 0",
             params![path, hash, mod_time, folder_id],
         )?;
         Ok(conn.last_insert_rowid())
@@ -128,6 +149,49 @@ impl Database {
         })?;
         
         files.collect()
+    }
+
+    pub fn get_unscanned_files(&self, limit: i64) -> Result<Vec<FileEntry>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, path, hash, mod_time, sync_status, folder_id 
+             FROM file_index WHERE ai_scanned = 0 LIMIT ?1"
+        )?;
+        
+        let files = stmt.query_map(params![limit], |row| {
+            Ok(FileEntry {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                hash: row.get(2)?,
+                mod_time: row.get(3)?,
+                sync_status: row.get(4)?,
+                folder_id: row.get(5)?,
+            })
+        })?;
+        
+        files.collect()
+    }
+    
+    pub fn save_embedding(&self, file_id: i64, embedding: &[f32], score: f32) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        
+        // Serialize embedding to bytes (f32 -> u8)
+        let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes().to_vec()).collect();
+        
+        conn.execute(
+            "INSERT INTO face_embeddings (file_id, embedding, score, created_at) VALUES (?1, ?2, ?3, ?4)",
+            params![file_id, bytes, score, chrono::Utc::now().timestamp()],
+        )?;
+        Ok(())
+    }
+
+    pub fn mark_scanned(&self, file_id: i64) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE file_index SET ai_scanned = 1 WHERE id = ?1",
+            params![file_id],
+        )?;
+        Ok(())
     }
     
     pub fn mark_synced(&self, file_id: i64) -> Result<()> {
