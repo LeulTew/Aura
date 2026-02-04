@@ -2,7 +2,7 @@
 //!
 //! Handles uploading local files to Supabase Storage.
 
-use reqwest::multipart::{Form, Part};
+// NOTE: Form/Part not currently used - upload uses raw body, not multipart
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::fs;

@@ -30,7 +30,7 @@ mod tests {
         assert!(folders[0].enabled);
         
         // Add duplicate (should be ignored or idempotent)
-        let id2 = db.add_watched_folder("/tmp/photos").unwrap();
+        let _id2 = db.add_watched_folder("/tmp/photos").unwrap();
         // In our impl, INSERT OR IGNORE returns 0 rows affected, so last_insert_rowid might track strictly inserts.
         // But let's check count.
         let folders_after = db.get_watched_folders().unwrap();
