@@ -29,6 +29,12 @@ interface ConflictInfo {
   mod_time: number;
 }
 
+interface AIModelStatus {
+  models_available: boolean;
+  model_dir: string;
+  local_ai_enabled: boolean;
+}
+
 type Tab = "dashboard" | "settings" | "conflicts";
 
 // Conflicts Panel Component
@@ -173,6 +179,9 @@ function App() {
   });
   const [configSaved, setConfigSaved] = useState(false);
 
+  // AI settings state
+  const [aiStatus, setAiStatus] = useState<AIModelStatus | null>(null);
+
   // Fetch stats and folders on mount
   useEffect(() => {
     refreshData();
@@ -194,6 +203,26 @@ function App() {
     const interval = setInterval(refreshData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch AI status on Settings tab
+  useEffect(() => {
+    if (activeTab === "settings") {
+      invoke<AIModelStatus>("check_ai_models")
+        .then(setAiStatus)
+        .catch(console.error);
+    }
+  }, [activeTab]);
+
+  const handleToggleLocalAI = async (enabled: boolean) => {
+    try {
+      await invoke("enable_local_ai", { enabled });
+      // Refresh AI status
+      const status = await invoke<AIModelStatus>("check_ai_models");
+      setAiStatus(status);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
 
   const refreshData = async () => {
     try {
@@ -436,6 +465,31 @@ function App() {
               onChange={(e) => setConfig({ ...config, bucket: e.target.value })}
             />
           </div>
+
+          {/* Local AI Settings */}
+          <div className="settings-divider"></div>
+          <h3>Local AI (Offline Search)</h3>
+          
+          <div className="form-group ai-toggle">
+            <label htmlFor="local-ai-toggle">Enable Local AI</label>
+            <input
+              id="local-ai-toggle"
+              type="checkbox"
+              checked={aiStatus?.local_ai_enabled ?? false}
+              onChange={(e) => handleToggleLocalAI(e.target.checked)}
+            />
+            <span className={`model-status ${aiStatus?.models_available ? 'ready' : 'missing'}`}>
+              {aiStatus?.models_available ? '✓ Models Ready' : '⚠ Models Not Found'}
+            </span>
+          </div>
+          
+          {aiStatus && !aiStatus.models_available && (
+            <div className="model-hint">
+              <p>Download models to enable offline face search:</p>
+              <code>{aiStatus.model_dir}</code>
+              <p className="hint">Place <strong>det_10g.onnx</strong> and <strong>w600k_r50.onnx</strong> in this folder.</p>
+            </div>
+          )}
 
           <button className="save-button" onClick={handleSaveConfig}>
             Save Configuration

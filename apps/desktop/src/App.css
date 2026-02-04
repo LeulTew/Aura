@@ -631,3 +631,77 @@ body {
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
+
+/* AI Settings Styles */
+.settings-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 24px 0;
+}
+
+.settings-section h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.ai-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.model-status {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.model-status.ready {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.model-status.missing {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+
+.model-hint {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.model-hint p {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.model-hint code {
+  display: block;
+  background: var(--bg-secondary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  overflow-x: auto;
+  word-break: break-all;
+  margin: 8px 0;
+}
+
+.model-hint .hint {
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
