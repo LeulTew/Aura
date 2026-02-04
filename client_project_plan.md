@@ -363,6 +363,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Commercialization (Billing)**: Self-serve SaaS with Stripe, invoicing, and hard storage limits.
 - [ ] **Mobile App**: Dedicated photographer app for easier event uploads.
 - [ ] **2FA Implementation**: Enable functional 2FA toggle in `/admin/settings` (currently placeholder).
+- [ ] **TUS Uploader**: Resumable uploads with bandwidth throttling (Deferred from Phase 7).
 
 ---
 
