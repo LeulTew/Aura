@@ -2,6 +2,8 @@
 //!
 //! Image preprocessing and postprocessing helpers for face detection.
 
+#![allow(dead_code)]
+
 use image::{DynamicImage, RgbImage};
 
 /// Preprocess an image for SCRFD face detection.

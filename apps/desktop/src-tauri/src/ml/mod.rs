@@ -27,6 +27,7 @@ pub struct FaceEngine {
 pub struct Face {
     pub bbox: [f32; 4],       // [x1, y1, x2, y2]
     pub score: f32,
+    #[allow(dead_code)]
     pub embedding: Option<Vec<f32>>,
 }
 
@@ -178,10 +179,61 @@ mod tests {
     }
 
     #[test]
-    fn test_models_available_false_initially() {
-        // This test assumes models are not pre-installed
-        // In CI, this should return false
+    #[cfg(feature = "ai")]
+    fn test_models_available() {
+        // Models should be downloaded by setup script
         let available = FaceEngine::models_available();
-        println!("Models available: {}", available);
+        assert!(available, "Models should be available after download script execution");
+    }
+
+    #[test]
+    #[cfg(feature = "ai")]
+    fn test_face_engine_init() {
+        let engine = FaceEngine::new();
+        assert!(engine.is_ok(), "Failed to initialize FaceEngine: {:?}", engine.err());
+    }
+
+    #[test]
+    #[cfg(feature = "ai")]
+    fn test_end_to_end_embedding() {
+        // 1. Initialize Engine
+        let mut engine = FaceEngine::new().expect("Failed to init engine");
+
+        // 2. Create Dummy Image (640x640 black image with white square)
+        let mut img = image::DynamicImage::new_rgb8(640, 640);
+        // Draw a simple feature to make it non-empty
+        for x in 300..340 {
+            for y in 300..340 {
+                img.as_mut_rgb8().unwrap().put_pixel(x, y, image::Rgb([255, 255, 255]));
+            }
+        }
+
+        // 3. Detect Faces (MVP fallback to center)
+        let faces = engine.detect_faces(&img).expect("Detection failed");
+        assert_eq!(faces.len(), 1, "Should return 1 face (MVP fallback)");
+        let face = &faces[0];
+        assert_eq!(face.score, 0.99);
+
+        // 4. Crop and Extract Embedding
+        // Manually crop based on bbox
+        let bbox = face.bbox;
+        let x = bbox[0].max(0.0) as u32;
+        let y = bbox[1].max(0.0) as u32;
+        let w = (bbox[2] - bbox[0]).max(1.0) as u32;
+        let h = (bbox[3] - bbox[1]).max(1.0) as u32;
+        
+        // Ensure crop is valid
+        assert!(x + w <= 640 && y + h <= 640, "Crop out of bounds");
+        
+        let crop = img.crop_imm(x, y, w, h).to_rgb8();
+        let embedding = engine.extract_embedding(&crop).expect("Embedding extraction failed");
+
+        // 5. Verify Embedding
+        assert_eq!(embedding.len(), 512, "Embedding should be 512 dimensions");
+        // Check it's not all zeros (simple check)
+        let magnitude: f32 = embedding.iter().map(|x| x * x).sum();
+        assert!(magnitude > 0.0, "Embedding magnitude should be non-zero");
+        
+        println!("Successfully extracted embedding with magnitude: {}", magnitude);
     }
 }

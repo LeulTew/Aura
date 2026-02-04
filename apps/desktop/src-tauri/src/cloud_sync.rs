@@ -7,6 +7,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct CloudPhoto {
     pub id: String, // UUID
@@ -15,6 +16,7 @@ pub struct CloudPhoto {
     pub source_type: Option<String>,
 }
 
+#[allow(dead_code)]
 pub struct CloudSync {
     db: Database,
     client: Client,
@@ -23,6 +25,7 @@ pub struct CloudSync {
     org_id: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 pub struct SyncResult {
     pub photos_in_cloud: usize,
