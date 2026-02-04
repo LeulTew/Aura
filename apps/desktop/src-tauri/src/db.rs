@@ -246,4 +246,94 @@ impl Database {
         )?;
         Ok(())
     }
+
+    /// Get all files that have been synced to cloud
+    pub fn get_synced_files(&self) -> Result<Vec<FileEntry>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, path, hash, mod_time, sync_status, folder_id, cloud_hash, conflict_state 
+             FROM file_index WHERE sync_status = 'synced'"
+        )?;
+        
+        let files = stmt.query_map([], |row| {
+            Ok(FileEntry {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                hash: row.get(2)?,
+                mod_time: row.get(3)?,
+                sync_status: row.get(4)?,
+                folder_id: row.get(5)?,
+                cloud_hash: row.get(6)?,
+                conflict_state: row.get(7)?,
+            })
+        })?;
+        
+        files.collect()
+    }
+
+    /// Set conflict state for a file
+    pub fn set_conflict_state(&self, file_id: i64, state: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE file_index SET conflict_state = ?1 WHERE id = ?2",
+            params![state, file_id],
+        )?;
+        Ok(())
+    }
+
+    /// Get all files with conflicts
+    pub fn get_conflicts(&self) -> Result<Vec<FileEntry>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, path, hash, mod_time, sync_status, folder_id, cloud_hash, conflict_state 
+             FROM file_index WHERE conflict_state != 'none'"
+        )?;
+        
+        let files = stmt.query_map([], |row| {
+            Ok(FileEntry {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                hash: row.get(2)?,
+                mod_time: row.get(3)?,
+                sync_status: row.get(4)?,
+                folder_id: row.get(5)?,
+                cloud_hash: row.get(6)?,
+                conflict_state: row.get(7)?,
+            })
+        })?;
+        
+        files.collect()
+    }
+
+    /// Resolve a conflict by choosing local or cloud version
+    pub fn resolve_conflict(&self, file_id: i64, resolution: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        match resolution {
+            "keep_local" => {
+                // Mark as pending to re-upload local version
+                conn.execute(
+                    "UPDATE file_index SET conflict_state = 'none', sync_status = 'pending' WHERE id = ?1",
+                    params![file_id],
+                )?;
+            },
+            "keep_cloud" => {
+                // Mark for download (or just clear conflict if we want to delete local)
+                conn.execute(
+                    "UPDATE file_index SET conflict_state = 'none', sync_status = 'deleted_on_cloud' WHERE id = ?1",
+                    params![file_id],
+                )?;
+            },
+            "keep_both" => {
+                // User will manually resolve - just clear conflict flag
+                conn.execute(
+                    "UPDATE file_index SET conflict_state = 'none' WHERE id = ?1",
+                    params![file_id],
+                )?;
+            },
+            _ => {
+                return Err(rusqlite::Error::InvalidParameterName("Invalid resolution".to_string()));
+            }
+        }
+        Ok(())
+    }
 }

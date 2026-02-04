@@ -20,7 +20,7 @@ use sync::{SyncEngine, SyncConfig};
 use watcher::FileWatcher;
 use serde::{Deserialize, Serialize};
 use std::path::{PathBuf, Path};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 
@@ -151,6 +151,42 @@ fn scan_folder(path: String, state: State<AppState>) -> Result<i64, String> {
     }
     
     Ok(count)
+}
+
+// ============ Conflict Management Commands ============
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConflictInfo {
+    pub id: i64,
+    pub path: String,
+    pub conflict_state: String,
+    pub mod_time: i64,
+}
+
+#[tauri::command]
+fn get_conflicts(state: State<AppState>) -> Result<Vec<ConflictInfo>, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    
+    let conflicts = db.get_conflicts().map_err(|e| e.to_string())?;
+    
+    Ok(conflicts.into_iter().map(|f| ConflictInfo {
+        id: f.id,
+        path: f.path,
+        conflict_state: f.conflict_state,
+        mod_time: f.mod_time,
+    }).collect())
+}
+
+#[tauri::command]
+fn resolve_conflict(file_id: i64, resolution: String, state: State<AppState>) -> Result<(), String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    
+    db.resolve_conflict(file_id, &resolution).map_err(|e| e.to_string())?;
+    
+    println!("Conflict resolved: file_id={}, resolution={}", file_id, resolution);
+    Ok(())
 }
 
 // ============ Background Workers ============
@@ -304,6 +340,8 @@ pub fn run() {
             add_watched_folder,
             remove_watched_folder,
             scan_folder,
+            get_conflicts,
+            resolve_conflict,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
