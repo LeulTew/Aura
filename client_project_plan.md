@@ -14,6 +14,8 @@
 ![System Architecture (SVG)](docs/diagrams/system_architecture.svg)
 ![System Architecture (PNG)](docs/diagrams/system_architecture.png)
 
+> **See Also**: [Detailed Workflow Diagrams](docs/workflows.md) for sequence diagrams of Tenant Provisioning, Sync Agent, and Local AI.
+
 The Aura Pro platform follows a multi-tenant architecture where all users authenticate through a unified login on the landing page. Based on their role stored in the `profiles` table, users are redirected to their respective portals:
 
 - **SuperAdmin Portal** (`/superadmin`): Platform operators (us) manage all tenants, monitor usage metrics, set billing limits, and control system health.
