@@ -313,18 +313,18 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ---
 
-### Phase 7C: Desktop Agent Polish [IN PROGRESS]
+### Phase 7C: Desktop Agent Polish [COMPLETE]
 
 **Goal**: Complete remaining desktop features and enable optional AI.
 
-#### 7C.1: Local AI Search [PARTIAL - UI COMPLETE]
+#### 7C.1: Local AI Search [COMPLETE]
 
-**Status**: Backend commands and Settings UI implemented. ONNX build deferred pending runtime install.
+**Status**: Feature fully implemented, tests passing, models downloading correctly.
 
 **Implementation Steps**:
 
 1. **Enable AI Feature**
-   - [ ] Enable `ai` feature by default _(deferred - requires ONNX Runtime system library)_
+   - [x] Enable `ai` feature by default _(verified manually via `cargo build --features ai`)_
    - [x] Add model download script (`scripts/download_models.sh`)
 
 2. **UI Toggle**
@@ -339,19 +339,20 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 4. **Testing Subphase**
    - [x] `cargo check --features ai` passes
-   - [x] `cargo test` - 3/3 passed
+   - [x] `cargo test` - All tests passed (including end-to-end inference)
    - [x] `tsc --noEmit` - 0 errors
-   - [ ] Build with `cargo build --features ai` _(requires ONNX Runtime)_
+   - [x] Build with `cargo build --features ai` _(Verified with local ONNX Runtime 1.17.3)_
 
 **Files**:
 
 - `apps/desktop/src-tauri/Cargo.toml`
 - `apps/desktop/src-tauri/src/db.rs` (settings table)
 - `apps/desktop/src-tauri/src/lib.rs` (4 Tauri commands)
-- `apps/desktop/src-tauri/src/ml/`
+- `apps/desktop/src-tauri/src/ml/mod.rs` (FaceEngine + Integration Tests)
 - `apps/desktop/src/App.tsx` (Settings UI)
 - `apps/desktop/src/App.css` (AI toggle styles)
-- `apps/desktop/scripts/download_models.sh` (new)
+- `apps/desktop/scripts/download_models.sh`
+- `apps/desktop/scripts/setup_onnx.sh` (Dev setup helper)
 
 ---
 
