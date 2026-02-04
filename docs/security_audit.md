@@ -47,6 +47,40 @@ The security architecture relies on Supabase Row Level Security (RLS) to enforce
 ## Action Plan
 
 1.  **RPC Security**: [DONE] Remediated usage of global `match_faces`.
-2.  **Profile Security**: [REMEDIATED] Created SQL trigger `007_fix_profile_role_security.sql` to prevent role/org_id escalation.
+2.  **Profile Security**: [DONE] Created SQL trigger `007_fix_profile_role_security.sql` to prevent role/org_id escalation.
     - **Mechanism**: `BEFORE UPDATE` trigger raises exception if `role` or `org_id` changes and user is not superadmin.
     - **Verification**: Trigger logic ensures `auth.uid()` checks against `profiles` table before allowing privilege changes.
+
+## Deployment Verification (2026-02-04)
+
+### 1. Trigger Deployment Check
+
+Run this SQL in Supabase Dashboard to verify trigger exists:
+
+```sql
+SELECT EXISTS (
+    SELECT 1 FROM pg_trigger t
+    JOIN pg_class c ON t.tgrelid = c.oid
+    WHERE t.tgname = 'enforce_role_security'
+    AND c.relname = 'profiles'
+) as trigger_exists;
+```
+
+**Expected Result**: `trigger_exists = true`
+
+### 2. Automated Tests
+
+Test file: `apps/core/tests/test_security_trigger.py`
+
+```bash
+cd apps/core && ./venv/bin/pytest tests/test_security_trigger.py -v
+```
+
+**Status**: 4 tests created (skipped without Supabase credentials in environment).
+
+### 3. Manual Verification Steps
+
+1. Login as an employee user via the web UI
+2. Open browser DevTools → Console
+3. Run: `supabase.from('profiles').update({role: 'admin'}).eq('id', '<your-user-id>')`
+4. **Expected**: Error containing "Access Denied: Only superadmins can modify user roles"
