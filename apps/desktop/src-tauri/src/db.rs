@@ -83,6 +83,11 @@ impl Database {
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (file_id) REFERENCES file_index(id) ON DELETE CASCADE
             );
+            
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             "
         )?;
 
@@ -334,6 +339,31 @@ impl Database {
                 return Err(rusqlite::Error::InvalidParameterName("Invalid resolution".to_string()));
             }
         }
+        Ok(())
+    }
+
+    // ============ Settings Methods ============
+
+    /// Get a setting value by key
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
+        let result: std::result::Result<String, _> = stmt.query_row(params![key], |row| row.get(0));
+        match result {
+            Ok(value) => Ok(Some(value)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Set a setting value (upsert)
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = ?2",
+            params![key, value],
+        )?;
         Ok(())
     }
 }

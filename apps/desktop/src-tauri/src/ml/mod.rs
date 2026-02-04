@@ -5,9 +5,7 @@
 mod utils;
 
 use ort::session::{builder::GraphOptimizationLevel, Session};
-use ort::value::TensorRef;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 /// Path where ONNX models are stored
 fn models_dir() -> PathBuf {

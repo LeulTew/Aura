@@ -189,6 +189,79 @@ fn resolve_conflict(file_id: i64, resolution: String, state: State<AppState>) ->
     Ok(())
 }
 
+// ============ AI Commands ============
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AIModelStatus {
+    pub models_available: bool,
+    pub model_dir: String,
+    pub local_ai_enabled: bool,
+}
+
+/// Check if AI models are available on disk
+#[tauri::command]
+fn check_ai_models(state: State<AppState>) -> Result<AIModelStatus, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    
+    // Get local AI enabled setting
+    let local_ai_enabled = db.get_setting("local_ai_enabled")
+        .map_err(|e| e.to_string())?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    
+    #[cfg(feature = "ai")]
+    {
+        use ml::FaceEngine;
+        Ok(AIModelStatus {
+            models_available: FaceEngine::models_available(),
+            model_dir: FaceEngine::get_model_dir().to_string_lossy().to_string(),
+            local_ai_enabled,
+        })
+    }
+    
+    #[cfg(not(feature = "ai"))]
+    {
+        // Return the stored preference even if AI isn't compiled
+        Ok(AIModelStatus {
+            models_available: false,
+            model_dir: "AI feature not compiled".to_string(),
+            local_ai_enabled,
+        })
+    }
+}
+
+/// Enable or disable local AI processing
+#[tauri::command]
+fn enable_local_ai(enabled: bool, state: State<AppState>) -> Result<(), String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    
+    db.set_setting("local_ai_enabled", if enabled { "true" } else { "false" })
+        .map_err(|e| e.to_string())?;
+    
+    println!("Aura AI: Local AI {}", if enabled { "enabled" } else { "disabled" });
+    Ok(())
+}
+
+/// Get a specific setting value
+#[tauri::command]
+fn get_setting(key: String, state: State<AppState>) -> Result<Option<String>, String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    
+    db.get_setting(&key).map_err(|e| e.to_string())
+}
+
+/// Set a specific setting value
+#[tauri::command]
+fn set_setting(key: String, value: String, state: State<AppState>) -> Result<(), String> {
+    let db_lock = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    
+    db.set_setting(&key, &value).map_err(|e| e.to_string())
+}
+
 // ============ Background Workers ============
 
 fn start_sync_worker(app: AppHandle) {
@@ -342,6 +415,10 @@ pub fn run() {
             scan_folder,
             get_conflicts,
             resolve_conflict,
+            check_ai_models,
+            enable_local_ai,
+            get_setting,
+            set_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -352,7 +429,6 @@ fn start_indexer_worker(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         use ml::FaceEngine;
         use std::path::Path;
-        use image::GenericImageView;
         
         println!("Aura AI: Initializing Face Engine...");
         

@@ -41,7 +41,7 @@ ai = ["ort"]
 uuid = { version = "1.20.0", features = ["v4"] }
 
 [dependencies.ort]
-version = "2.0.0-rc.11"
+version = "2.0.0-rc.9"
 optional = true
 default-features = false
 features = ["ndarray"]
