@@ -22,7 +22,139 @@ interface SyncConfig {
   bucket: string;
 }
 
+interface ConflictInfo {
+  id: number;
+  path: string;
+  conflict_state: string;
+  mod_time: number;
+}
+
 type Tab = "dashboard" | "settings" | "conflicts";
+
+// Conflicts Panel Component
+function ConflictsPanel() {
+  const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchConflicts();
+  }, []);
+
+  const fetchConflicts = async () => {
+    setLoading(true);
+    try {
+      const data = await invoke<ConflictInfo[]>("get_conflicts");
+      setConflicts(data);
+      setError(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResolve = async (fileId: number, resolution: string) => {
+    try {
+      await invoke("resolve_conflict", { fileId, resolution });
+      // Refresh list after resolution
+      await fetchConflicts();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const handleResolveAll = async (resolution: string) => {
+    for (const conflict of conflicts) {
+      await handleResolve(conflict.id, resolution);
+    }
+  };
+
+  // Extract filename from full path
+  const getFileName = (path: string) => {
+    const parts = path.split(/[/\\]/);
+    return parts[parts.length - 1] || path;
+  };
+
+  // Format timestamp
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  return (
+    <section className="conflicts-section">
+      <div className="section-header">
+        <h2>Sync Conflicts</h2>
+        <div className="conflict-actions">
+          <button 
+            className="refresh-btn" 
+            onClick={fetchConflicts} 
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "↻ Refresh"}
+          </button>
+          {conflicts.length > 0 && (
+            <button 
+              className="resolve-all-btn" 
+              onClick={() => handleResolveAll("keep_local")}
+            >
+              Resolve All (Keep Local)
+            </button>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="error-banner">
+          <span>⚠️ {error}</span>
+          <button onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {!loading && conflicts.length === 0 ? (
+        <div className="empty-state">
+          <p>No conflicts detected.</p>
+          <p className="hint">
+            Great! Your local files are in sync with the cloud.
+          </p>
+        </div>
+      ) : (
+        <ul className="conflict-list">
+          {conflicts.map((conflict) => (
+            <li key={conflict.id} className="conflict-item">
+              <div className="conflict-info">
+                <span className="file-name">{getFileName(conflict.path)}</span>
+                <span className="file-path">{conflict.path}</span>
+                <span className="conflict-type">{conflict.conflict_state}</span>
+                <span className="file-time">Modified: {formatTime(conflict.mod_time)}</span>
+              </div>
+              <div className="resolution-options">
+                <button 
+                  className="btn-local"
+                  onClick={() => handleResolve(conflict.id, "keep_local")}
+                >
+                  Keep Local
+                </button>
+                <button 
+                  className="btn-cloud"
+                  onClick={() => handleResolve(conflict.id, "keep_cloud")}
+                >
+                  Keep Cloud
+                </button>
+                <button 
+                  className="btn-both"
+                  onClick={() => handleResolve(conflict.id, "keep_both")}
+                >
+                  Keep Both
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
@@ -312,38 +444,7 @@ function App() {
       )}
 
       {activeTab === "conflicts" && (
-        <section className="conflicts-section">
-          <div className="section-header">
-            <h2>Sync Conflicts</h2>
-            <div className="conflict-actions">
-              <button className="resolve-all-btn">Resolve All (Keep Local)</button>
-            </div>
-          </div>
-
-          <div className="empty-state">
-            <p>No conflicts detected.</p>
-            <p className="hint">
-              Great! Your local files are in sync with the cloud.
-            </p>
-          </div>
-          
-          {/* 
-          TODO: Connect to backend get_conflicts command
-          <ul className="conflict-list">
-             Example item structure for future implementation
-            <li className="conflict-item">
-              <div className="conflict-info">
-                <span className="file-name">IMG_9921.jpg</span>
-                <span className="file-path">/Users/leul/Photos/Wedding/IMG_9921.jpg</span>
-              </div>
-              <div className="resolution-options">
-                <button>Keep Local (Newer)</button>
-                <button>Keep Cloud</button>
-              </div>
-            </li>
-          </ul> 
-          */}
-        </section>
+        <ConflictsPanel />
       )}
 
       {/* Error Display */}
