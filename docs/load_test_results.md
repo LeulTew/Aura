@@ -70,17 +70,19 @@ cd apps/core
 
 ## Sample Results (Preliminary)
 
-Last run: 2026-02-04 (Backend offline - ConnectionRefused)
+Last run: 2026-02-04 (Success - 50 Users)
 
 ```
-Type     Name                      50%    95%   100%  # reqs
--------- ------------------------- ------ ------ ------ ------
-GET      /                           1      1      1      3
-POST     /api/admin/login            1      5      5     10
-GET      /health                     1      2      2     20
-
-All requests failed (ConnectionRefused - backend not running)
+Type     Name                      # reqs    # fails |   Avg     Min     Max    Med |  req/s
+-------- ------------------------- ------- --------- | ------ ------- ------- ------ | ------
+POST     /api/auth/login               50    0(0.00%) |   559       3    2635    250 |   6.25
+GET      /health                       34    0(0.00%) |   268       0    2630      1 |   1.50
+GET      /                             13    0(0.00%) |   251       0    2629      1 |   0.88
+-------- ------------------------- ------- --------- | ------ ------- ------- ------ | ------
+         Aggregated                    97    0(0.00%) |   416       0    2635      6 |   8.62
 ```
+
+**Observation**: Login endpoint `/api/auth/login` handled 50 concurrent logins successfully with a median latency of 250ms. No errors were recorded.
 
 ---
 

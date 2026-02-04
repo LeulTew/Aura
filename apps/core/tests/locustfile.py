@@ -9,7 +9,7 @@ class AuraUser(HttpUser):
         """Login at start of session to get JWT token."""
         # Try Admin Login (MVP PIN flow)
         # In production this might be disabled or changed, but for now it's our best entry point
-        response = self.client.post("/api/admin/login", json={"pin": "1234"})
+        response = self.client.post("/api/auth/login", json={"email": "admin@addis.studio", "password": "password123"})
         
         if response.status_code == 200:
             data = response.json()

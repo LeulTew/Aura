@@ -161,11 +161,11 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 **Goal**: Robust bi-directional sync for offline-first studios.
 
 - [x] **One-Way Sync**: Local -> Cloud (Implemented).
-- [ ] **Bi-Directional**: Cloud Deletes -> Local Trash (Planned).
-- [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios (Planned).
-- [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search (Deferred).
+- [x] **Bi-Directional**: Cloud Deletes -> Local Trash (Done in 7B.2).
+- [x] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios (Done in 7B.3).
+- [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search (Phase 7C).
 
-### Phase 7B: Production Readiness [IN PROGRESS - PRIORITY]
+### Phase 7B: Production Readiness [DONE]
 
 **Goal**: Security hardening, performance validation, and sync completion.
 **Implementation Order**: Prioritized by risk and dependency.
@@ -277,7 +277,7 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ---
 
-#### 7B.4: Load Testing [DONE]
+#### 7B.4: Load Testing [DONE] ✅
 
 **Status**: Locust script exists at `tests/locustfile.py`, documentation created.
 
@@ -313,33 +313,45 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ---
 
-### Phase 7C: Desktop Agent Polish [PLANNED]
+### Phase 7C: Desktop Agent Polish [IN PROGRESS]
 
 **Goal**: Complete remaining desktop features and enable optional AI.
 
-#### 7C.1: Local AI Search [DEFERRED - LOW PRIORITY]
+#### 7C.1: Local AI Search [PARTIAL - UI COMPLETE]
 
-**Status**: Code exists in `ml/` directory, gated behind `#[cfg(feature = "ai")]`.
+**Status**: Backend commands and Settings UI implemented. ONNX build deferred pending runtime install.
 
 **Implementation Steps**:
 
 1. **Enable AI Feature**
-   - [ ] Update `Cargo.toml` to enable `ai` feature by default (or via config).
-   - [ ] Ensure ONNX models are bundled or downloaded on first run.
+   - [ ] Enable `ai` feature by default _(deferred - requires ONNX Runtime system library)_
+   - [x] Add model download script (`scripts/download_models.sh`)
 
 2. **UI Toggle**
-   - [ ] Add "Enable Local AI" toggle in desktop settings.
-   - [ ] Store preference in local DB.
+   - [x] Add "Enable Local AI" toggle in desktop settings
+   - [x] Store preference in local DB (settings table + get/set methods)
+   - [x] Show model status indicator (ready/missing)
 
-3. **Testing Subphase**
-   - [ ] **Build**: `cargo build --features ai`
-   - [ ] **Unit Test**: Test embedding extraction with sample image.
-   - [ ] **Manual Review**: Verify model files are properly bundled.
+3. **Tauri Commands**
+   - [x] `check_ai_models() -> AIModelStatus`
+   - [x] `enable_local_ai(enabled: bool)`
+   - [x] `get_setting(key)` / `set_setting(key, value)`
+
+4. **Testing Subphase**
+   - [x] `cargo check --features ai` passes
+   - [x] `cargo test` - 3/3 passed
+   - [x] `tsc --noEmit` - 0 errors
+   - [ ] Build with `cargo build --features ai` _(requires ONNX Runtime)_
 
 **Files**:
 
 - `apps/desktop/src-tauri/Cargo.toml`
+- `apps/desktop/src-tauri/src/db.rs` (settings table)
+- `apps/desktop/src-tauri/src/lib.rs` (4 Tauri commands)
 - `apps/desktop/src-tauri/src/ml/`
+- `apps/desktop/src/App.tsx` (Settings UI)
+- `apps/desktop/src/App.css` (AI toggle styles)
+- `apps/desktop/scripts/download_models.sh` (new)
 
 ---
 
