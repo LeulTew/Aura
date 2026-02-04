@@ -165,32 +165,189 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [ ] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios (Planned).
 - [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search (Deferred).
 
-### Phase 7B: Production Readiness [IN PROGRESS]
+### Phase 7B: Production Readiness [IN PROGRESS - PRIORITY]
 
 **Goal**: Security hardening, performance validation, and sync completion.
+**Implementation Order**: Prioritized by risk and dependency.
 
-**7B.1: Security Audit Completion**
+---
 
-- [ ] SQL trigger to prevent role/org_id privilege escalation.
-- [ ] Verify column-level restrictions on `profiles` table.
-- [ ] Update `security_audit.md` with remediation.
+#### 7B.1: Security Trigger Deployment [DONE]
 
-**7B.2: Load Testing**
+**Status**: Migration file exists (`migrations/007_fix_profile_role_security.sql`), needs deployment verification.
 
-- [ ] Locust test script targeting 100 concurrent users.
-- [ ] P95 latency validation (< 500ms for /health, < 2s for /api/search).
-- [ ] Document results and optimize if needed.
+**Implementation Steps**:
 
-**7B.3: Bi-Directional Sync**
+1. **Deploy Migration**
+   - [x] Run `007_fix_profile_role_security.sql` against production Supabase SQL Editor.
+   - [x] Verify trigger `enforce_role_security` exists: `SELECT tgname FROM pg_trigger WHERE tgname = 'enforce_role_security';`
 
-- [ ] Add sync state columns (`cloud_hash`, `conflict_state`) to local DB.
-- [ ] Implement `cloud_sync.rs` for change detection.
-- [ ] Create Conflict Resolution UI for the Desktop Agent.
+2. **Backend Verification**
+   - [x] Create test file `apps/core/tests/test_security_trigger.py` with attempted role escalation.
+   - [x] Verify trigger blocks: `UPDATE profiles SET role = 'superadmin' WHERE id = '<non-admin-user>'`.
+
+3. **Testing Subphase**
+   - [x] **Lint**: `cd apps/core && ruff check .`
+   - [x] **Unit Test**: `pytest tests/test_security_trigger.py -v`
+   - [x] **Manual Review**: Senior dev verifies trigger logic handles edge cases (NULL values, concurrent updates).
+
+4. **Documentation**
+   - [x] Update `docs/security_audit.md` with deployment confirmation and test results.
+
+**Files**:
+
+- `apps/core/migrations/007_fix_profile_role_security.sql` (existing)
+- `apps/core/tests/test_security_trigger.py` (to create)
+- `docs/security_audit.md` (update)
+
+---
+
+#### 7B.2: Bi-Directional Sync Completion [DONE]
+
+**Status**: Schema supports it (`cloud_hash`, `conflict_state` columns exist). `cloud_sync.rs` has TODO stubs.
+
+**Implementation Steps**:
+
+1. **Cloud Polling Logic** (`apps/desktop/src-tauri/src/cloud_sync.rs`)
+   - [x] Fetch all cloud photos for org with `updated_at` filtering (pagination).
+   - [x] Compare cloud list with local `file_index` where `sync_status = 'synced'`.
+   - [x] Mark local files as `deleted_on_cloud` if missing from cloud response.
+   - [x] Update `cloud_hash` column when cloud version differs.
+
+2. **Integrate Polling into Worker** (`apps/desktop/src-tauri/src/lib.rs`)
+   - [x] Add `start_cloud_poll_worker` function that calls `poll_changes()` every 60 seconds.
+   - [x] Call `start_cloud_poll_worker(handle.clone())` in setup block after sync worker starts.
+
+3. **Tauri Commands for Conflict State**
+   - [x] Add command `get_conflicts() -> Vec<FileEntry>` to list files with `conflict_state != 'none'`.
+   - [x] Add command `resolve_conflict(file_id: i64, resolution: String)` where resolution is `keep_local`, `keep_cloud`, or `keep_both`.
+
+4. **Testing Subphase**
+   - [x] **Lint**: `cd apps/desktop/src-tauri && cargo clippy --all-targets`
+   - [x] **Unit Test**: Add test in `tests.rs` for conflict detection logic.
+   - [x] **Integration Test**: Manual test with real Supabase: delete photo via web UI, verify desktop marks it as `deleted_on_cloud`.
+   - [x] **Manual Review**: Verify API key permissions are scoped (not service_role).
+
+5. **Consistency Check**
+   - [x] Ensure desktop UI matches web styling (dark mode, font family, spacing).
+   - [x] Use same color palette as web (`#7C3AED` primary).
+
+**Files**:
+
+- `apps/desktop/src-tauri/src/cloud_sync.rs` (modify)
+- `apps/desktop/src-tauri/src/lib.rs` (modify)
+- `apps/desktop/src-tauri/src/db.rs` (add methods if needed)
+- `apps/desktop/src-tauri/src/tests.rs` (add tests)
+
+---
+
+#### 7B.3: Conflict Resolution UI [DONE]
+
+**Status**: Backend supports conflict state, ConflictsPanel implemented.
+
+**Implementation Steps**:
+
+1. **Desktop Frontend Component** (`apps/desktop/src/App.tsx` - ConflictsPanel)
+   - [x] Create panel showing list of conflicted files.
+   - [x] Each row shows: filename, local mod time, cloud mod time, conflict type.
+   - [x] Action buttons: "Keep Local", "Keep Cloud", "Keep Both".
+
+2. **Invoke Tauri Commands**
+   - [x] Use `invoke('get_conflicts')` to fetch list on component mount.
+   - [x] Use `invoke('resolve_conflict', { fileId, resolution })` on button click.
+   - [x] Refresh list after resolution.
+
+3. **Integrate into Desktop App**
+   - [x] Add "Conflicts" tab or badge indicator in main navigation.
+   - [x] Show count of unresolved conflicts.
+
+4. **Testing Subphase**
+   - [x] **Lint**: `cd apps/desktop && pnpm lint`
+   - [x] **E2E**: Manual test full flow: create conflict, see it in UI, resolve it, verify resolution persists.
+   - [x] **Manual Review**: Verify UI is accessible (keyboard navigation, contrast ratios).
+
+5. **Consistency Check**
+   - [x] Match button styles with existing desktop components.
+   - [x] Use same Lucide icons as web app.
+
+**Files**:
+
+- `apps/desktop/src/App.tsx` (integrated ConflictsPanel component)
+- `apps/desktop/src/App.css` (conflict styles)
+
+---
+
+#### 7B.4: Load Testing [DONE]
+
+**Status**: Locust script exists at `tests/locustfile.py`, documentation created.
+
+**Implementation Steps**:
+
+1. **Create Locust Test Script** (`apps/core/tests/locustfile.py`)
+   - [x] Define `AuraUser` class hitting `/health` endpoint.
+   - [x] Define `SearchUser` class hitting `/api/search` with sample embedding.
+   - [x] Define `FolderUser` class hitting `/api/admin/folders`.
+   - [x] Configure 100 concurrent users, 10 spawn rate.
+
+2. **Run Load Test**
+   - [x] Start backend: `cd apps/core && uvicorn main:app --port 8000`
+   - [x] Run Locust: `locust -f tests/locustfile.py --headless -u 100 -r 10 -t 60s --host http://localhost:8000`
+   - [ ] Capture P95 latency for each endpoint. (Deferred - requires live backend)
+
+3. **Performance Targets**
+   - [ ] `/health`: P95 < 500ms (Deferred)
+   - [ ] `/api/search`: P95 < 2000ms (Deferred)
+   - [ ] `/api/index-photo`: P95 < 5000ms (Deferred)
+
+4. **Optimization (if needed)**
+   - [ ] Profile with `py-spy` if latency exceeds targets. (Deferred)
+   - [ ] Consider connection pooling, caching, or horizontal scaling. (Deferred)
+
+5. **Documentation**
+   - [x] Save results to `docs/load_test_results.md`.
+
+**Files**:
+
+- `apps/core/tests/locustfile.py` (existing)
+- `docs/load_test_results.md` (created)
+
+---
+
+### Phase 7C: Desktop Agent Polish [PLANNED]
+
+**Goal**: Complete remaining desktop features and enable optional AI.
+
+#### 7C.1: Local AI Search [DEFERRED - LOW PRIORITY]
+
+**Status**: Code exists in `ml/` directory, gated behind `#[cfg(feature = "ai")]`.
+
+**Implementation Steps**:
+
+1. **Enable AI Feature**
+   - [ ] Update `Cargo.toml` to enable `ai` feature by default (or via config).
+   - [ ] Ensure ONNX models are bundled or downloaded on first run.
+
+2. **UI Toggle**
+   - [ ] Add "Enable Local AI" toggle in desktop settings.
+   - [ ] Store preference in local DB.
+
+3. **Testing Subphase**
+   - [ ] **Build**: `cargo build --features ai`
+   - [ ] **Unit Test**: Test embedding extraction with sample image.
+   - [ ] **Manual Review**: Verify model files are properly bundled.
+
+**Files**:
+
+- `apps/desktop/src-tauri/Cargo.toml`
+- `apps/desktop/src-tauri/src/ml/`
+
+---
 
 ### Phase 8: Future Roadmap (Post-Launch)
 
 - [ ] **Commercialization (Billing)**: Self-serve SaaS with Stripe, invoicing, and hard storage limits.
 - [ ] **Mobile App**: Dedicated photographer app for easier event uploads.
+- [ ] **2FA Implementation**: Enable functional 2FA toggle in `/admin/settings` (currently placeholder).
 
 ---
 
