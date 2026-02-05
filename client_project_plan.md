@@ -3,7 +3,7 @@
 **Vision**: A Multi-Tenant SaaS Platform for Photo Studios
 **Target Release**: 2026
 **Stack**: Next.js 15, FastAPI, Supabase (PostgreSQL + pgvector), WebUSB
-**Current Status**: MVP Production Ready (Authentication, Storage, Search, & Tethr functional)
+**Current Status**: Phase 8 Complete (Billing, 2FA, Desktop Sync, TUS Code Ready)
 
 ---
 
@@ -158,14 +158,14 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Security**: Verified App-Level RLS enforcement.
 - [x] **Frontend Config**: Identified required Vercel environment variables (`NEXT_PUBLIC_BACKEND_URL`).
 
-### Phase 7: Advanced Sync (Desktop Agent) [BETA]
+### Phase 7: Advanced Sync (Desktop Agent) [COMPLETE]
 
 **Goal**: Robust bi-directional sync for offline-first studios.
 
 - [x] **One-Way Sync**: Local -> Cloud (Implemented).
 - [x] **Bi-Directional**: Cloud Deletes -> Local Trash (Done in 7B.2).
 - [x] **Conflict Resolution UI**: Handle "Edit on Cloud vs Edit on Disk" scenarios (Done in 7B.3).
-- [ ] **Local Vector Search**: Move `insightface` inference to local Rust binary for offline search (Phase 7C).
+- [x] **Local Vector Search**: FaceEngine implemented in `ml/mod.rs` with ONNX Runtime for offline face detection/embedding (Phase 7C.1).
 
 ### Phase 7B: Production Readiness [DONE]
 
@@ -381,12 +381,13 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 - [x] **Enforcement**
   - [x] MFA challenge page (`/login/mfa`) checks AAL level and verifies TOTP
 
-#### 8C: TUS Uploader [PARTIAL]
+#### 8C: TUS Uploader [CODE COMPLETE]
 
 - [x] **Desktop Agent**
   - [x] TUS protocol implementation (`tus_uploader.rs`) with chunked uploads, offset tracking, resume capability
-- [ ] **Infrastructure**
-  - [ ] Enable TUS on Supabase Storage bucket (requires dashboard configuration)
+  - [x] Unit tests for base64 encoding and uploader creation
+- [ ] **Infrastructure** _(Dashboard-only, not code work)_
+  - [ ] Enable TUS on Supabase Storage bucket via Supabase Dashboard → Storage → Settings
 
 #### Future Items
 
