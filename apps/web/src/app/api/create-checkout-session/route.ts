@@ -8,9 +8,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-01-28.clover', // stripe@20.3.0 compatible version
-});
+// Lazy Stripe client initialization (prevents build-time errors)
+let stripeClient: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!stripeClient) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not configured');
+    }
+    stripeClient = new Stripe(secretKey, {
+      apiVersion: '2025-01-27.acacia' as Stripe.LatestApiVersion, // stripe@20.3.0 compatible version
+    });
+  }
+  return stripeClient;
+}
 
 // Price IDs from Stripe Dashboard (replace with your actual IDs)
 const PRICE_IDS: Record<string, string> = {
@@ -42,6 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe Checkout Session
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],

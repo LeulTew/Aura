@@ -43,6 +43,7 @@ def generate_stripe_signature(payload: str, secret: str) -> str:
 class TestStripeWebhookSecurity:
     """Test signature verification and security measures."""
     
+    @patch("routers.stripe_webhooks.WEBHOOK_SECRET", "whsec_test_secret")
     def test_missing_signature_header(self):
         """Webhook without signature should be rejected."""
         response = client.post(
@@ -52,6 +53,7 @@ class TestStripeWebhookSecurity:
         assert response.status_code == 400
         assert "Missing Stripe-Signature" in response.json()["detail"]
     
+    @patch("routers.stripe_webhooks.WEBHOOK_SECRET", "whsec_test_secret")
     def test_invalid_signature(self):
         """Webhook with invalid signature should be rejected."""
         response = client.post(
@@ -69,6 +71,7 @@ class TestStripeWebhookSecurity:
 class TestIdempotency:
     """Test idempotent event processing."""
     
+    @patch("routers.stripe_webhooks.WEBHOOK_SECRET", "whsec_test_secret")
     @patch("routers.stripe_webhooks.get_client")
     @patch("routers.stripe_webhooks.stripe.Webhook.construct_event")
     def test_duplicate_event_skipped(self, mock_construct, mock_client):
@@ -103,6 +106,7 @@ class TestIdempotency:
 class TestSubscriptionEvents:
     """Test subscription status update logic."""
     
+    @patch("routers.stripe_webhooks.WEBHOOK_SECRET", "whsec_test_secret")
     @patch("routers.stripe_webhooks.get_client")
     @patch("routers.stripe_webhooks.stripe.Webhook.construct_event")
     @patch("routers.stripe_webhooks.stripe.Subscription.retrieve")
@@ -139,6 +143,7 @@ class TestSubscriptionEvents:
         assert response.status_code == 200
         assert response.json()["status"] == "success"
     
+    @patch("routers.stripe_webhooks.WEBHOOK_SECRET", "whsec_test_secret")
     @patch("routers.stripe_webhooks.get_client")
     @patch("routers.stripe_webhooks.stripe.Webhook.construct_event")
     def test_subscription_deleted_marks_canceled(self, mock_construct, mock_client):
@@ -173,6 +178,7 @@ class TestSubscriptionEvents:
 class TestPaymentFailure:
     """Test invoice.payment_failed handling."""
     
+    @patch("routers.stripe_webhooks.WEBHOOK_SECRET", "whsec_test_secret")
     @patch("routers.stripe_webhooks.get_client")
     @patch("routers.stripe_webhooks.stripe.Webhook.construct_event")
     def test_payment_failed_marks_past_due(self, mock_construct, mock_client):

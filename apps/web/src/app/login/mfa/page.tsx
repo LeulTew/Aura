@@ -7,7 +7,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -29,7 +29,7 @@ const supabase = createClient(
 const fontDisplay = "font-sans font-black uppercase leading-[0.85] tracking-[-0.04em]";
 const fontMono = "font-mono text-xs uppercase tracking-[0.2em] font-medium";
 
-export default function MFAChallengePage() {
+function MFAChallengeContent() {
   const searchParams = useSearchParams();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -207,5 +207,18 @@ export default function MFAChallengePage() {
         </p>
       </div>
     </main>
+  );
+}
+
+// Wrapper with Suspense for useSearchParams (Next.js 16 requirement)
+export default function MFAChallengePage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      </main>
+    }>
+      <MFAChallengeContent />
+    </Suspense>
   );
 }

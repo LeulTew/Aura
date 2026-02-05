@@ -360,10 +360,37 @@ usage_logs    (id, org_id, user_id, action, bytes_processed, metadata, created_a
 
 ### Phase 8: Future Roadmap (Post-Launch)
 
-- [ ] **Commercialization (Billing)**: Self-serve SaaS with Stripe, invoicing, and hard storage limits.
+#### 8A: Commercialization (Billing) [COMPLETE]
+
+- [x] **Schema & Backend**
+  - [x] Add Stripe fields to `organizations` table (`stripe_customer_id`, `subscription_status`, `current_period_end`)
+  - [x] Create `webhook_events` table for idempotent processing
+  - [x] Implement Webhook handler (`stripe_webhooks.py`) with signature verification
+- [x] **Frontend Integration**
+  - [x] Create `/pricing` page with Free/Pro/Enterprise tiers
+  - [x] Integrate Stripe Checkout via `/api/create-checkout-session`
+  - [x] Build Billing Settings UI (`/admin/settings/billing`)
+- [x] **Enforcement**
+  - [x] `require_active_subscription` middleware (HTTP 402 for `past_due`/`canceled`)
+
+#### 8B: 2FA Implementation [COMPLETE]
+
+- [x] **Enrollment**
+  - [x] MFA enrollment page (`/admin/settings/security`) with QR code via Supabase `auth.mfa.enroll()`
+  - [x] 6-digit TOTP verification and factor management
+- [x] **Enforcement**
+  - [x] MFA challenge page (`/login/mfa`) checks AAL level and verifies TOTP
+
+#### 8C: TUS Uploader [PARTIAL]
+
+- [x] **Desktop Agent**
+  - [x] TUS protocol implementation (`tus_uploader.rs`) with chunked uploads, offset tracking, resume capability
+- [ ] **Infrastructure**
+  - [ ] Enable TUS on Supabase Storage bucket (requires dashboard configuration)
+
+#### Future Items
+
 - [ ] **Mobile App**: Dedicated photographer app for easier event uploads.
-- [ ] **2FA Implementation**: Enable functional 2FA toggle in `/admin/settings` (currently placeholder).
-- [ ] **TUS Uploader**: Resumable uploads with bandwidth throttling (Deferred from Phase 7).
 
 ---
 
