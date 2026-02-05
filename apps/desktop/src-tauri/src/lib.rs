@@ -7,6 +7,7 @@ mod scanner;
 mod sync;
 mod watcher;
 mod cloud_sync;
+#[allow(dead_code)]
 mod tus_uploader;
 
 #[cfg(feature = "ai")]

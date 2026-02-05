@@ -272,15 +272,18 @@ fn base64_encode(input: &str) -> String {
 }
 
 /// Minimal base64 encoder (avoiding external deps)
+#[allow(dead_code)]
 struct Base64Encoder<W: std::io::Write> {
     writer: W,
     buffer: [u8; 3],
     len: usize,
 }
 
+#[allow(dead_code)]
 const BASE64_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 impl<W: std::io::Write> Base64Encoder<W> {
+    #[allow(dead_code)]
     fn new(writer: W) -> Self {
         Self {
             writer,
@@ -289,6 +292,7 @@ impl<W: std::io::Write> Base64Encoder<W> {
         }
     }
 
+    #[allow(dead_code)]
     fn encode_block(&mut self) -> std::io::Result<()> {
         let b0 = self.buffer[0] as usize;
         let b1 = self.buffer[1] as usize;

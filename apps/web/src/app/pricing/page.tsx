@@ -6,9 +6,10 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Zap, Building2, Sparkles } from 'lucide-react';
+import { parseJwt } from '@/utils/auth';
 
 interface PricingTier {
   name: string;
@@ -78,11 +79,30 @@ const tiers: PricingTier[] = [
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
+
+  // Check if user is logged in
+  useEffect(() => {
+    const token = sessionStorage.getItem('admin_token');
+    if (token) {
+      const claims = parseJwt(token);
+      if (claims?.org_id) {
+        setOrgId(claims.org_id);
+      }
+    }
+  }, []);
 
   const handleSubscribe = async (priceId: string) => {
     if (priceId === 'free') {
-      // Free tier doesn't need checkout
       window.location.href = '/login';
+      return;
+    }
+
+    // Require login for paid plans
+    if (!orgId) {
+      // Save intended plan, redirect to login, then back to upgrade
+      sessionStorage.setItem('intended_plan', priceId);
+      window.location.href = '/login?redirect=/admin/settings/billing';
       return;
     }
 
@@ -90,15 +110,10 @@ export default function PricingPage() {
     setError(null);
 
     try {
-      // For demo, we'll use a placeholder org_id
-      // In production, this would come from the authenticated user's session
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          priceId,
-          orgId: 'demo-org-id', // TODO: Replace with actual org_id from session
-        }),
+        body: JSON.stringify({ priceId, orgId }),
       });
 
       const data = await response.json();
