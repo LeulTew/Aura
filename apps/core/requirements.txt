@@ -11,3 +11,5 @@ supabase
 pydantic-settings
 pyjwt
 qrcode
+stripe
+locust

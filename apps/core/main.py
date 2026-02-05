@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
-from routers import auth, profile, photos, admin, superadmin, owner
+from routers import auth, profile, photos, admin, superadmin, owner, stripe_webhooks
 # Import dependencies to trigger lazy loading if needed, and for lifespan
 from dependencies import get_processor
 
@@ -44,6 +44,7 @@ app.include_router(profile.router)
 app.include_router(admin.router)
 app.include_router(superadmin.router)
 app.include_router(owner.router)
+app.include_router(stripe_webhooks.router)
 
 @app.get("/")
 async def root():
