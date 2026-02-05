@@ -7,6 +7,7 @@ mod scanner;
 mod sync;
 mod watcher;
 mod cloud_sync;
+mod tus_uploader;
 
 #[cfg(feature = "ai")]
 mod ml;
